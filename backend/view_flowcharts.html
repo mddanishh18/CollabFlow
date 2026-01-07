@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Models & Controllers Architecture Flowcharts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .tip {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .tip strong {
+            color: #1976d2;
+            font-size: 1.1em;
+        }
+        
+        .carousel-container {
+            position: relative;
+            margin: 40px 0;
+        }
+        
+        .carousel-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .carousel {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .carousel-images {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+        
+        .carousel-slide {
+            min-width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .carousel-slide img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+        
+        .carousel-slide img:hover {
+            transform: scale(1.02);
+        }
+        
+        .carousel-caption {
+            margin-top: 15px;
+            font-size: 1em;
+            color: #666;
+            text-align: center;
+            max-width: 800px;
+        }
+        
+        .carousel-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .carousel-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .carousel-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .carousel-btn:active {
+            transform: translateY(0);
+        }
+        
+        .carousel-indicators {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .indicator.active {
+            background: #667eea;
+            width: 30px;
+            border-radius: 6px;
+        }
+        
+        .slide-counter {
+            font-size: 1.1em;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        /* Lightbox for zoomed images */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+        }
+        
+        .lightbox.active {
+            display: flex;
+        }
+        
+        .lightbox img {
+            max-width: 95%;
+            max-height: 95%;
+            border-radius: 8px;
+        }
+        
+        .close-lightbox {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Models & Controllers Architecture</h1>
+            <p>Visual Flowcharts for Project & Workspace Entities</p>
+        </header>
+        
+        <div class="content">
+            <div class="tip">
+                <strong>💡 Tip:</strong> Click on any image to zoom in and explore details! Use the arrows to navigate between different diagrams.
+            </div>
+            
+            <div class="carousel-container">
+                <h2 class="carousel-title">📊 Interactive Flowcharts</h2>
+                
+                <div class="carousel">
+                    <div class="carousel-images" id="carouselImages">
+                        <div class="carousel-slide">
+                            <img src="./project_model_flowchart_1767612607001.png" alt="Project Model" onclick="openLightbox(this.src)">
+                            <div class="carousel-caption">
+                                <strong>Project Model Architecture</strong> - Complete schema fields, indexes, virtuals, instance methods, static methods, pre-save middleware, and all 11 controller functions with their data flows
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="./workspace_model_flowchart_1767612633588.png" alt="Workspace Model" onclick="openLightbox(this.src)">
+                            <div class="carousel-caption">
+                                <strong>Workspace Model Architecture</strong> - Complete schema fields, indexes, virtuals, instance methods, static methods, permission system hierarchy, and all 12 controller functions
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="./cross_model_interaction_1767612658858.png" alt="Cross-Model Interactions" onclick="openLightbox(this.src)">
+                            <div class="carousel-caption">
+                                <strong>Cross-Model Interactions</strong> - Shows how Project controllers depend on Workspace methods for validation and permission checking
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="./permission_flow_diagram_1767612680602.png" alt="Permission Flow" onclick="openLightbox(this.src)">
+                            <div class="carousel-caption">
+                                <strong>Permission Flow Diagram</strong> - Complete role-based access control showing workspace permissions (owner/admin/member/viewer) and project permissions (owner/editor/viewer) with controller mappings
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="./create_project_sequence_1767612704392.png" alt="Create Project Sequence" onclick="openLightbox(this.src)">
+                            <div class="carousel-caption">
+                                <strong>Create Project Sequence Diagram</strong> - Complete data flow showing Client → Controller → Workspace Model → Project Model → MongoDB with all validation steps and error handling
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="carousel-controls">
+                    <button class="carousel-btn" onclick="previousSlide()">← Previous</button>
+                    <div class="carousel-indicators">
+                        <span class="slide-counter"><span id="currentSlide">1</span> / 5</span>
+                    </div>
+                    <button class="carousel-btn" onclick="nextSlide()">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lightbox for zoomed images -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <span class="close-lightbox">&times;</span>
+        <img id="lightboxImg" src="" alt="Zoomed Image">
+    </div>
+    
+    <script>
+        let currentIndex = 0;
+        const totalSlides = 5;
+        
+        function updateCarousel() {
+            const carouselImages = document.getElementById('carouselImages');
+            carouselImages.style.transform = `translateX(-${currentIndex * 100}%)`;
+            document.getElementById('currentSlide').textContent = currentIndex + 1;
+        }
+        
+        function nextSlide() {
+            currentIndex = (currentIndex + 1) % totalSlides;
+            updateCarousel();
+        }
+        
+        function previousSlide() {
+            currentIndex = (currentIndex - 1 + totalSlides) % totalSlides;
+            updateCarousel();
+        }
+        
+        function openLightbox(src) {
+            document.getElementById('lightbox').classList.add('active');
+            document.getElementById('lightboxImg').src = src;
+        }
+        
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('lightbox').classList.contains('active')) {
+                if (e.key === 'Escape') closeLightbox();
+            } else {
+                if (e.key === 'ArrowLeft') previousSlide();
+                if (e.key === 'ArrowRight') nextSlide();
+            }
+        });
+    </script>
+</body>
+</html>
