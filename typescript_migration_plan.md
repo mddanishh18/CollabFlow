@@ -158,11 +158,11 @@ The research confirms our bottom-up approach:
 
 ## 📊 Project Inventory
 
-### Frontend Files (45 files)
+### Frontend Files (57 files)
 
 | Category | Files | Priority |
 |----------|-------|----------|
-| **App Pages** | 10 | Phase 5 |
+| **App Pages** | 13 | Phase 5 |
 | **Components - UI** | 20 | Phase 4 |
 | **Components - Feature** | 15 | Phase 4 |
 | **Hooks** | 4 | Phase 3 |
@@ -200,19 +200,23 @@ Phase 6: Testing & Cleanup
 
 ### 1.1 Frontend TypeScript Configuration
 
-**New Files to Create:**
-- `frontend/tsconfig.json`
+> [!NOTE]
+> The frontend already has `tsconfig.json` and `next-env.d.ts` configured. Verify these exist before proceeding.
+
+**Files to Verify (Already Exist):**
+- `frontend/tsconfig.json` ✅
+- `frontend/next-env.d.ts` ✅
 
 **Files to Modify:**
-- `frontend/package.json` - Add TypeScript dependencies
-- `frontend/next.config.js` → `frontend/next.config.ts` (optional, can stay .js)
+- `frontend/package.json` - Ensure TypeScript dependencies are installed
+- `frontend/next.config.mjs` → `frontend/next.config.ts` (optional, can stay .mjs)
 
-**Dependencies to Install:**
+**Dependencies to Install (if missing):**
 ```bash
 npm install --save-dev typescript @types/node @types/react @types/react-dom
 ```
 
-**tsconfig.json Content:**
+**Existing tsconfig.json Content (for reference):**
 ```json
 {
   "compilerOptions": {
@@ -254,7 +258,7 @@ npm install --save-dev typescript @types/node @types/react @types/react-dom
 **Dependencies to Install:**
 ```bash
 npm install --save-dev typescript @types/node @types/express @types/bcryptjs @types/jsonwebtoken @types/cors
-npm install --save-dev ts-node-dev @types/mongoose
+npm install --save-dev tsx
 ```
 
 **tsconfig.json Content:**
@@ -285,7 +289,7 @@ npm install --save-dev ts-node-dev @types/mongoose
 ```json
 {
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   }
@@ -422,7 +426,7 @@ export interface DialogProps {
 
 ```typescript
 import { Request } from 'express';
-import { Types, Document } from 'mongoose';
+import { Types, HydratedDocument, Model } from 'mongoose';
 
 // Extended Request with user
 export interface AuthenticatedRequest extends Request {
@@ -433,9 +437,11 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// User Document Interface
-export interface IUser extends Document {
-  _id: Types.ObjectId;
+// ===== Mongoose HydratedDocument Pattern (Recommended 2025) =====
+// Separate interfaces: raw data vs document vs model
+
+// User - Raw Data Interface (pure data shape, no mongoose)
+export interface IUser {
   name: string;
   email: string;
   password: string;
@@ -445,6 +451,9 @@ export interface IUser extends Document {
   isEmailVerified: boolean;
   lastActive: Date;
 }
+
+// User Document Type (for use when you have a mongoose document)
+export type UserDocument = HydratedDocument<IUser>;
 
 // Workspace Types
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
@@ -465,8 +474,8 @@ export interface IWorkspaceInvitation {
   createdAt: Date;
 }
 
-export interface IWorkspace extends Document {
-  _id: Types.ObjectId;
+// Workspace - Raw Data Interface
+export interface IWorkspace {
   name: string;
   description: string;
   owner: Types.ObjectId | IUser;
@@ -478,10 +487,17 @@ export interface IWorkspace extends Document {
     defaultProjectVisibility: 'private' | 'workspace' | 'public';
   };
   isArchived: boolean;
+}
+
+// Workspace Methods Interface
+export interface IWorkspaceMethods {
   isMember(userId: Types.ObjectId | string): boolean;
   getMemberRole(userId: Types.ObjectId | string): WorkspaceRole | null;
   hasPermission(userId: Types.ObjectId | string, permission: string): boolean;
 }
+
+// Workspace Document Type
+export type WorkspaceDocument = HydratedDocument<IWorkspace, IWorkspaceMethods>;
 
 // Project Types
 export type ProjectRole = 'owner' | 'editor' | 'viewer';
@@ -493,8 +509,8 @@ export interface IProjectMember {
   addedAt: Date;
 }
 
-export interface IProject extends Document {
-  _id: Types.ObjectId;
+// Project - Raw Data Interface
+export interface IProject {
   name: string;
   description: string;
   workspace: Types.ObjectId | IWorkspace;
@@ -514,11 +530,18 @@ export interface IProject extends Document {
     enableRealTimeEditing: boolean;
   };
   isArchived: boolean;
+}
+
+// Project Methods Interface
+export interface IProjectMethods {
   isMember(userId: Types.ObjectId | string): boolean;
   getMemberRole(userId: Types.ObjectId | string): ProjectRole | null;
   canEdit(userId: Types.ObjectId | string): boolean;
   canView(userId: Types.ObjectId | string): boolean;
 }
+
+// Project Document Type
+export type ProjectDocument = HydratedDocument<IProject, IProjectMethods>;
 
 // JWT Payload
 export interface JwtPayload {
