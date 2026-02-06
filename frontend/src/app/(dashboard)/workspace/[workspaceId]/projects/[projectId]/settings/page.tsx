@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useProjects } from "@/hooks/use-projects"
 import { useToast } from "@/hooks/use-toast"
+import { ProjectStatus, ProjectPriority, ProjectVisibility } from "@/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -29,12 +30,18 @@ export default function ProjectSettingsPage() {
 
     const { currentProject, fetchProjectById, updateProject, deleteProject, loading } = useProjects()
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        name: string;
+        description: string;
+        status: ProjectStatus;
+        priority: ProjectPriority;
+        visibility: ProjectVisibility;
+    }>({
         name: "",
         description: "",
-        status: "planning",
-        priority: "medium",
-        visibility: "workspace",
+        status: "planning" as ProjectStatus,
+        priority: "medium" as ProjectPriority,
+        visibility: "workspace" as ProjectVisibility,
     })
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
@@ -51,9 +58,9 @@ export default function ProjectSettingsPage() {
             setFormData({
                 name: currentProject.name || "",
                 description: currentProject.description || "",
-                status: currentProject.status || "planning",
-                priority: currentProject.priority || "medium",
-                visibility: currentProject.visibility || "workspace",
+                status: (currentProject.status || "planning") as ProjectStatus,
+                priority: (currentProject.priority || "medium") as ProjectPriority,
+                visibility: (currentProject.visibility || "workspace") as ProjectVisibility,
             })
         }
     }, [currentProject])
@@ -177,7 +184,7 @@ export default function ProjectSettingsPage() {
                             <Label htmlFor="status">Status</Label>
                             <Select
                                 value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value as "planning" | "active" | "on-hold" | "completed" })}
+                                onValueChange={(value) => setFormData({ ...formData, status: value as ProjectStatus })}
                             >
                                 <SelectTrigger id="status">
                                     <SelectValue />
@@ -199,7 +206,7 @@ export default function ProjectSettingsPage() {
                             <Label htmlFor="priority">Priority</Label>
                             <Select
                                 value={formData.priority}
-                                onValueChange={(value) => setFormData({ ...formData, priority: value })}
+                                onValueChange={(value) => setFormData({ ...formData, priority: value as ProjectPriority })}
                             >
                                 <SelectTrigger id="priority">
                                     <SelectValue />
@@ -221,7 +228,7 @@ export default function ProjectSettingsPage() {
                             <Label htmlFor="visibility">Visibility</Label>
                             <Select
                                 value={formData.visibility}
-                                onValueChange={(value) => setFormData({ ...formData, visibility: value })}
+                                onValueChange={(value) => setFormData({ ...formData, visibility: value as ProjectVisibility })}
                             >
                                 <SelectTrigger id="visibility">
                                     <SelectValue />
