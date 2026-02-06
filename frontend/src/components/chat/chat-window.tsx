@@ -165,9 +165,9 @@ export function ChatWindow() {
     };
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Channel Header */}
-            <div className="flex-none border-b bg-background px-6 py-4">
+        <div className="flex flex-col h-full min-h-0">
+            {/* Channel Header - Sticky on mobile */}
+            <div className="sticky top-0 z-10 flex-none border-b bg-background px-6 py-4 pl-16 md:pl-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Button
@@ -203,8 +203,8 @@ export function ChatWindow() {
                 </div>
             </div>
 
-            {/* Messages Area - Scrollable */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Messages Area - Scrollable with flex-1 and min-height for proper keyboard resize */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
                 {loading && channelMessages.length === 0 ? (
                     <MessageSkeleton />
                 ) : error ? (

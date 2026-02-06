@@ -21,6 +21,9 @@ export function MessageInput({ channelId }: MessageInputProps) {
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Detect if user is on mobile device
+    const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     // Handle typing indicator
     const handleTyping = () => {
         startTyping(channelId);
@@ -47,13 +50,13 @@ export function MessageInput({ channelId }: MessageInputProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId]);
 
-    // Refocus textarea after sending message
+    // Refocus textarea after sending message (disabled on mobile to prevent keyboard flickering)
     useEffect(() => {
-        if (shouldRefocus && !isSending && message === "") {
+        if (shouldRefocus && !isSending && message === "" && !isMobile) {
             textareaRef.current?.focus();
             setShouldRefocus(false);
         }
-    }, [shouldRefocus, isSending, message]);
+    }, [shouldRefocus, isSending, message, isMobile]);
 
     const handleSend = async () => {
         const trimmedMessage = message.trim();
@@ -80,7 +83,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
 
             // Clear input and trigger refocus
             setMessage("");
-            setShouldRefocus(true);
+            setShouldRefocus(!isMobile); // Only refocus on desktop, not mobile
         } catch (error) {
             toast({
                 title: "Error",

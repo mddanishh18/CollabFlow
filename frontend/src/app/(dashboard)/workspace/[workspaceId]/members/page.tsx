@@ -290,7 +290,7 @@ export default function MembersPage() {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 ml-13 sm:ml-0">
+                                    <div className="flex items-center gap-2">
                                         <Badge
                                             variant={member.role === "owner" ? "default" : "secondary"}
                                             className="text-xs"

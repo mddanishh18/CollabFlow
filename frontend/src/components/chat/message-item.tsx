@@ -40,7 +40,7 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
     const senderId = typeof message.sender === 'string' ? message.sender : message.sender._id;
     const senderName = typeof message.sender === 'string' ? 'Unknown' : message.sender.name;
     const senderAvatar = typeof message.sender === 'string' ? undefined : message.sender.avatar;
-    
+
     // Handle both _id and id for compatibility (backend uses _id, some auth might use id)
     const currentUserId = user?._id || (user as any)?.id;
     const isOwnMessage = senderId === currentUserId;
@@ -150,13 +150,36 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                                 (edited)
                             </span>
                         )}
-                        
+
                         {/* Read Receipts - Only show for own messages */}
                         {isOwnMessage && (
                             <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1 text-muted-foreground cursor-help">
+                                        <button
+                                            className="flex items-center gap-1 text-muted-foreground cursor-pointer hover:text-foreground transition-colors touch-manipulation"
+                                            onClick={(e) => {
+                                                // On mobile, show alert with read receipts
+                                                if ('ontouchstart' in window) {
+                                                    e.preventDefault();
+                                                    if (readByOthers.length > 0) {
+                                                        const readers = readByOthers.map(r => {
+                                                            const readerName = typeof r.user === 'string' ? 'Unknown' : r.user.name;
+                                                            const readTime = new Date(r.readAt).toLocaleString([], {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            });
+                                                            return `${readerName} - ${readTime}`;
+                                                        }).join('\n');
+                                                        alert(`Read by:\n\n${readers}`);
+                                                    } else {
+                                                        alert('Message sent (not yet read)');
+                                                    }
+                                                }
+                                            }}
+                                        >
                                             {readByOthers.length > 0 ? (
                                                 <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
                                             ) : (
@@ -165,15 +188,15 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                                             {readByOthers.length > 1 && (
                                                 <span className="text-xs">{readByOthers.length}</span>
                                             )}
-                                        </div>
+                                        </button>
                                     </TooltipTrigger>
-                                    <TooltipContent side="left" className="max-w-xs">
+                                    <TooltipContent side="left" className="max-w-xs hidden md:block">
                                         {readByOthers.length > 0 ? (
                                             <div className="space-y-1">
                                                 <p className="font-semibold text-xs">Read by:</p>
                                                 {readByOthers.map((r, idx) => {
-                                                    const readerName = typeof r.user === 'string' 
-                                                        ? 'Unknown' 
+                                                    const readerName = typeof r.user === 'string'
+                                                        ? 'Unknown'
                                                         : r.user.name;
                                                     const readTime = new Date(r.readAt).toLocaleString([], {
                                                         month: 'short',
@@ -217,8 +240,8 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                     <>
                         <div className={cn(
                             "text-sm whitespace-pre-wrap break-words rounded-lg px-4 py-2",
-                            isOwnMessage 
-                                ? "bg-primary text-primary-foreground" 
+                            isOwnMessage
+                                ? "bg-primary text-primary-foreground"
                                 : "bg-muted text-foreground"
                         )}>
                             {message.content}

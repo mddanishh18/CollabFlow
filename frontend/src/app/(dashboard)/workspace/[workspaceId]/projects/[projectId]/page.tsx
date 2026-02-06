@@ -446,12 +446,12 @@ export default function ProjectDetailPage() {
                                 </CardDescription>
                             </div>
                             {canManageMembers && (
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => setAddMembersDialogOpen(true)}>
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                    <Button variant="outline" size="sm" onClick={() => setAddMembersDialogOpen(true)} className="w-full sm:w-auto">
                                         <UserPlus className="h-4 w-4 mr-2" />
                                         Add
                                     </Button>
-                                    <Button variant="outline" size="sm" onClick={() => setMembersDialogOpen(true)}>
+                                    <Button variant="outline" size="sm" onClick={() => setMembersDialogOpen(true)} className="w-full sm:w-auto">
                                         Manage
                                     </Button>
                                 </div>
