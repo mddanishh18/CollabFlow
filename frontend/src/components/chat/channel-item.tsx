@@ -28,7 +28,7 @@ export function ChannelItem({ channel, isActive, onClick, workspaceId, isUserOnl
             const currentUserId = user?._id || (user as any)?.id;
             const otherMember = channel.members.find(
                 (member: any) => {
-                    const memberId = typeof member === 'string' ? member : (member._id || member.id);
+                    const memberId = typeof member === 'string' ? member : member._id;
                     return memberId !== currentUserId;
                 }
             );
@@ -49,13 +49,13 @@ export function ChannelItem({ channel, isActive, onClick, workspaceId, isUserOnl
             const currentUserId = user?._id || (user as any)?.id;
             const otherMember = channel.members.find(
                 (member: any) => {
-                    const memberId = typeof member === 'string' ? member : (member._id || member.id);
+                    const memberId = typeof member === 'string' ? member : member._id;
                     return memberId !== currentUserId;
                 }
             );
 
             if (otherMember) {
-                return typeof otherMember === 'string' ? otherMember : (otherMember._id || otherMember.id);
+                return typeof otherMember === 'string' ? otherMember : otherMember._id;
             }
         }
         return null;
