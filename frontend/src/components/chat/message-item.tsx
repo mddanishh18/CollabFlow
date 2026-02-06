@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { useAuthStore } from "@/store/auth-store";
-import { MoreVertical, Pencil, Trash2, Loader2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Loader2, Check, CheckCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -38,6 +44,14 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
     // Handle both _id and id for compatibility (backend uses _id, some auth might use id)
     const currentUserId = user?._id || (user as any)?.id;
     const isOwnMessage = senderId === currentUserId;
+
+    // Calculate read receipt status for own messages
+    const readByCount = message.readBy?.length || 0;
+    const isRead = readByCount > 0;
+    const readByOthers = message.readBy?.filter(r => {
+        const readerId = typeof r.user === 'string' ? r.user : r.user._id;
+        return readerId !== currentUserId;
+    }) || [];
 
     const handleEdit = async () => {
         if (!editedContent.trim() || editedContent === message.content) {
@@ -124,17 +138,64 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                     <span className="font-semibold text-sm">
                         {isOwnMessage ? "You" : senderName}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                        {new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })}
-                    </span>
-                    {message.isEdited && (
-                        <span className="text-xs text-muted-foreground italic">
-                            (edited)
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                            {new Date(message.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
                         </span>
-                    )}
+                        {message.isEdited && (
+                            <span className="text-xs text-muted-foreground italic">
+                                (edited)
+                            </span>
+                        )}
+                        
+                        {/* Read Receipts - Only show for own messages */}
+                        {isOwnMessage && (
+                            <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 text-muted-foreground cursor-help">
+                                            {readByOthers.length > 0 ? (
+                                                <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
+                                            ) : (
+                                                <Check className="w-3.5 h-3.5" />
+                                            )}
+                                            {readByOthers.length > 1 && (
+                                                <span className="text-xs">{readByOthers.length}</span>
+                                            )}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="max-w-xs">
+                                        {readByOthers.length > 0 ? (
+                                            <div className="space-y-1">
+                                                <p className="font-semibold text-xs">Read by:</p>
+                                                {readByOthers.map((r, idx) => {
+                                                    const readerName = typeof r.user === 'string' 
+                                                        ? 'Unknown' 
+                                                        : r.user.name;
+                                                    const readTime = new Date(r.readAt).toLocaleString([], {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    });
+                                                    return (
+                                                        <div key={idx} className="text-xs">
+                                                            {readerName} - {readTime}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs">Sent</p>
+                                        )}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content */}

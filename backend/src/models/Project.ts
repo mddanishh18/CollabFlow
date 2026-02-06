@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose';
 import { IProject, IProjectMember, ProjectRole } from '../types/index.js';
 import { resolveObjectId } from '../utils/mongoose.js';
+import { logger } from '../utils/logger.js';
 
 // Interface for Project Document
 // Explicitly type members as subdocument array to avoid repeated type assertions
@@ -103,7 +104,7 @@ const projectSchema = new Schema<IProjectDocument, IProjectModel>({
     },
     visibility: {
         type: String,
-        enum: ['private', 'workspace', 'public'],
+        enum: ['private', 'workspace'],
         default: 'workspace'
     },
     settings: {
@@ -160,10 +161,33 @@ projectSchema.methods.isMember = function (
 ): boolean {
     const userIdStr = userId.toString();
     const ownerId = resolveObjectId(this.owner);
-    if (ownerId === userIdStr) return true;
-    return this.members.some((member) => {
-        return resolveObjectId(member.user) === userIdStr;
+
+    logger.log('=== isMember Check ===');
+    logger.log('User ID (input):', userId);
+    logger.log('User ID (string):', userIdStr);
+    logger.log('Project owner (resolved):', ownerId);
+    logger.log('Owner match:', ownerId === userIdStr);
+    logger.log('Members count:', this.members?.length || 0);
+    logger.log('Members:', this.members?.map(m => ({
+        user: resolveObjectId(m.user),
+        role: m.role
+    })));
+
+    if (ownerId === userIdStr) {
+        logger.log('✅ User is owner');
+        return true;
+    }
+
+    const isMemberOfProject = this.members.some((member) => {
+        const memberUserId = resolveObjectId(member.user);
+        logger.log(`Checking member: ${memberUserId} === ${userIdStr} ?`, memberUserId === userIdStr);
+        return memberUserId === userIdStr;
     });
+
+    logger.log('Is member of project:', isMemberOfProject);
+    logger.log('======================');
+
+    return isMemberOfProject;
 };
 
 /**
@@ -195,24 +219,45 @@ projectSchema.methods.canEdit = function (
 
 /**
  * Checks if a user has view permissions.
- * Public projects are visible to all.
+ * For workspace visibility, the controller will check workspace membership separately.
  */
 projectSchema.methods.canView = function (
     this: IProjectDocument,
     userId: string | Types.ObjectId
 ): boolean {
-    if (this.visibility === 'public') return true;
+    // Private: only project members can view
     if (this.visibility === 'private') {
         return this.isMember(userId);
     }
-    // workspace visibility - check in controller
+    // Workspace: project members can always view, workspace members checked in controller
     return this.isMember(userId);
 };
 
 projectSchema.methods.updateProgress = async function (this: IProjectDocument): Promise<number> {
-    // This will be populated when Task model is created
-    // For now, manual progress updates
-    return this.progress;
+    try {
+        const Task = mongoose.model('Task');
+        const totalTasks = await Task.countDocuments({ project: this._id });
+
+        if (totalTasks === 0) {
+            this.progress = 0;
+            await this.save();
+            return 0;
+        }
+
+        const completedTasks = await Task.countDocuments({
+            project: this._id,
+            status: 'done'
+        });
+
+        const progress = Math.round((completedTasks / totalTasks) * 100);
+        this.progress = progress;
+        await this.save();
+
+        return progress;
+    } catch (error) {
+        console.error('Error updating project progress:', error);
+        return this.progress;
+    }
 };
 
 // Pre-save middleware
@@ -248,13 +293,11 @@ projectSchema.statics.getWorkspaceProjects = async function (
     // Regular members only see:
     // 1. Projects they own
     // 2. Projects they're a member of
-    // 3. Projects with 'workspace' visibility (visible to all workspace members)
     const query = {
         ...baseQuery,
         $or: [
             { owner: userId },
-            { 'members.user': userId },
-            { visibility: 'workspace' }
+            { 'members.user': userId }
         ]
     };
 

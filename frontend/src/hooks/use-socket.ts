@@ -21,7 +21,7 @@ export const useSocket = (): UseSocketReturn => {
 
     //initialize socket ONCE
     useEffect(() => {
-        if(!isAuthenticated || !token) {
+        if (!isAuthenticated || !token) {
             disconnectSocket();
             setIsConnected(false);
             setSocketInstance(null);
@@ -29,29 +29,27 @@ export const useSocket = (): UseSocketReturn => {
             tokenRef.current = null;
             return;
         }
-        
+
         // Only initialize if token changed or not yet initialized
-        if(initializingRef.current && tokenRef.current === token) {
+        if (initializingRef.current && tokenRef.current === token) {
             return;
         }
-        
+
         initializingRef.current = true;
         tokenRef.current = token;
-        
+
         const socket = initializeSocket(token);
         setSocketInstance(socket);
-        
+
         // Update connected state
         setIsConnected(socket.connected);
 
         // Listen to connection state changes
         const handleConnect = () => {
-            console.log("✅ useSocket: Socket connected");
             setIsConnected(true);
         };
-        
+
         const handleDisconnect = () => {
-            console.log("🔌 useSocket: Socket disconnected");
             setIsConnected(false);
             // Reset initializing flag to allow reconnection
             initializingRef.current = false;
@@ -67,11 +65,11 @@ export const useSocket = (): UseSocketReturn => {
         };
     }, [isAuthenticated]);
 
-    
+
     //emit event helper
     const emit = useCallback((event: string, data: any) => {
         const socket = socketInstance || getSocket();
-        if(socket?.connected) {
+        if (socket?.connected) {
             socket.emit(event, data);
         } else {
             console.warn(`⚠️  Socket not connected. Cannot emit event: ${event}`);
@@ -81,7 +79,7 @@ export const useSocket = (): UseSocketReturn => {
     //event listener helper
     const on = useCallback((event: string, callback: (...args: any[]) => void) => {
         const socket = socketInstance || getSocket();
-        if(socket) {
+        if (socket) {
             socket.on(event, callback);
             return () => socket.off(event, callback);
         }

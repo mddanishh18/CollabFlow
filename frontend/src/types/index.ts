@@ -42,7 +42,6 @@ export interface WorkspaceSettings {
     isPublic: boolean;
     allowMemberInvites: boolean;
     defaultProjectVisibility: 'private' | 'workspace' | 'public';
-    visibility?: 'private' | 'public'; // For workspace-level visibility
 }
 
 export interface Workspace {

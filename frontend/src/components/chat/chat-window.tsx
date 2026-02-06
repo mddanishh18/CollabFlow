@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageInput } from "./message-input";
 import { MessageList } from "./message-list";
+import { MessageSkeleton } from "./message-skeleton";
 import { ChannelMembers } from "./channel-members";
 
 export function ChatWindow() {
@@ -30,11 +31,13 @@ export function ChatWindow() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const activeChannelRef = useRef(activeChannel);
+    const markAsReadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const previousMessageCountRef = useRef(0);
 
     // Helper: Get display name for channels (especially DMs)
     const getChannelDisplayName = () => {
         if (!activeChannel) return '';
-        
+
         // For direct messages, ALWAYS show the other user's name (even for old DMs with custom names)
         if (activeChannel.type === 'direct' && activeChannel.members) {
             const currentUserId = user?._id || (user as any)?.id;
@@ -44,28 +47,36 @@ export function ChatWindow() {
                     return memberId !== currentUserId;
                 }
             );
-            
+
             if (otherMember && typeof otherMember === 'object') {
                 return otherMember.name || 'Unknown User';
             }
             // Fallback if member not populated
             return 'Direct Message';
         }
-        
+
         // For public/private channels, use the channel name
         return activeChannel.name;
     };
 
     // Track activeChannel changes
     useEffect(() => {
-
         activeChannelRef.current = activeChannel;
     });
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
         if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+            const channelId = activeChannel?._id;
+            const currentMessageCount = channelId ? (messages[channelId]?.length || 0) : 0;
+            const isChannelSwitch = activeChannelRef.current?._id !== activeChannel?._id;
+
+            // Instant scroll when switching channels or loading initial messages
+            // Smooth scroll only when new messages arrive in the current channel
+            const behavior = isChannelSwitch || previousMessageCountRef.current === 0 ? "instant" : "smooth";
+
+            messagesEndRef.current.scrollIntoView({ behavior: behavior as ScrollBehavior });
+            previousMessageCountRef.current = currentMessageCount;
         }
     }, [messages, activeChannel]);
 
@@ -78,13 +89,37 @@ export function ChatWindow() {
 
         joinChannel(channelId);
         fetchMessages(channelId, { limit: 50 });
-        markAsRead(channelId);
 
         return () => {
             leaveChannel(channelId);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId]);
+
+    // Mark messages as read after viewing them for 1 second
+    useEffect(() => {
+        if (!channelId || !messages[channelId]?.length) {
+            return;
+        }
+
+        // Clear previous timeout
+        if (markAsReadTimeoutRef.current) {
+            clearTimeout(markAsReadTimeoutRef.current);
+        }
+
+        // Mark as read after 1 second of viewing
+        markAsReadTimeoutRef.current = setTimeout(() => {
+            markAsRead(channelId).catch((err) => {
+                console.error('Failed to mark messages as read:', err);
+            });
+        }, 1000);
+
+        return () => {
+            if (markAsReadTimeoutRef.current) {
+                clearTimeout(markAsReadTimeoutRef.current);
+            }
+        };
+    }, [channelId, messages, markAsRead]);
 
     // Re-join channel when socket connects (handles timing issues)
     useEffect(() => {
@@ -98,12 +133,15 @@ export function ChatWindow() {
     if (!activeChannel) {
         return (
             <div className="flex-1 flex items-center justify-center bg-muted/20">
-                <div className="text-center space-y-4">
-                    <Hash className="w-16 h-16 mx-auto text-muted-foreground/50" />
-                    <div>
-                        <h3 className="text-lg font-semibold text-foreground">No Channel Selected</h3>
-                        <p className="text-sm text-muted-foreground">
-                            Select a channel from the sidebar to start chatting
+                <div className="text-center space-y-6 max-w-md px-6">
+                    <div className="relative inline-block">
+                        <Hash className="w-24 h-24 mx-auto text-muted-foreground/20 stroke-[1.5]" />
+                        <div className="absolute inset-0 bg-linear-to-b from-primary/30 via-accent/15 to-transparent blur-3xl -z-10" />
+                    </div>
+                    <div className="space-y-3">
+                        <h3 className="text-xl font-semibold text-foreground">No Channel Selected</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            Select a channel from the sidebar to start chatting with your team
                         </p>
                     </div>
                 </div>
@@ -127,7 +165,7 @@ export function ChatWindow() {
     };
 
     return (
-        <div className="flex flex-col h-screen">
+        <div className="flex flex-col h-dvh">
             {/* Channel Header */}
             <div className="flex-none border-b bg-background px-6 py-4">
                 <div className="flex items-center justify-between">
@@ -140,7 +178,7 @@ export function ChatWindow() {
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
-                        
+
                         <div className="flex items-center gap-2">
                             <div className="text-muted-foreground">
                                 {getChannelIcon()}
@@ -166,11 +204,9 @@ export function ChatWindow() {
             </div>
 
             {/* Messages Area - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto">
                 {loading && channelMessages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                    </div>
+                    <MessageSkeleton />
                 ) : error ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center space-y-2">
@@ -185,11 +221,13 @@ export function ChatWindow() {
                         </div>
                     </div>
                 ) : (
-                    <MessageList
-                        messages={channelMessages}
-                        channelId={activeChannel._id}
-                        typingUsers={activeTypingUsers}
-                    />
+                    <div className="p-6">
+                        <MessageList
+                            messages={channelMessages}
+                            channelId={activeChannel._id}
+                            typingUsers={activeTypingUsers}
+                        />
+                    </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>

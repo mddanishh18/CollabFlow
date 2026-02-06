@@ -38,14 +38,11 @@ import {
     Trash2,
     Loader2,
     Shield,
-    Globe,
-    Lock,
 } from "lucide-react"
 
 interface FormData {
     name: string
     description: string
-    visibility: string
 }
 
 export default function SettingsPage() {
@@ -66,7 +63,6 @@ export default function SettingsPage() {
     const [formData, setFormData] = useState<FormData>({
         name: "",
         description: "",
-        visibility: "private",
     })
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
@@ -84,7 +80,6 @@ export default function SettingsPage() {
             setFormData({
                 name: currentWorkspace.name || "",
                 description: currentWorkspace.description || "",
-                visibility: currentWorkspace.settings?.visibility || "private",
             })
         }
     }, [currentWorkspace])
@@ -115,7 +110,6 @@ export default function SettingsPage() {
                     isPublic: currentWorkspace?.settings?.isPublic ?? false,
                     allowMemberInvites: currentWorkspace?.settings?.allowMemberInvites ?? false,
                     defaultProjectVisibility: currentWorkspace?.settings?.defaultProjectVisibility ?? 'workspace',
-                    visibility: formData.visibility as 'private' | 'public',
                 },
             })
 
@@ -259,38 +253,6 @@ export default function SettingsPage() {
                                     disabled={saving}
                                     className="resize-none"
                                 />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="visibility">Visibility</Label>
-                                <Select
-                                    value={formData.visibility}
-                                    onValueChange={(value) => handleInputChange("visibility", value)}
-                                    disabled={saving}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select visibility" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="private">
-                                            <div className="flex items-center gap-2">
-                                                <Lock className="h-4 w-4" />
-                                                Private
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="public">
-                                            <div className="flex items-center gap-2">
-                                                <Globe className="h-4 w-4" />
-                                                Public
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">
-                                    {formData.visibility === "private"
-                                        ? "Only invited members can access this workspace"
-                                        : "Anyone can view this workspace"}
-                                </p>
                             </div>
 
                             <div className="flex justify-end pt-4">

@@ -110,7 +110,8 @@ export const useProjectStore = create<ProjectState>()(
         {
             name: 'project-storage',
             partialize: (state) => ({
-                currentProject: state.currentProject
+                // Don't persist currentProject to avoid stale data issues
+                // It will be fetched fresh on page load
             })
         }
     )

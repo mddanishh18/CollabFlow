@@ -1,4 +1,5 @@
-import {io, Socket} from "socket.io-client";
+import { io, Socket } from "socket.io-client";
+import { logger } from "./logger";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -7,20 +8,20 @@ let socket: Socket | null = null;
 export const initializeSocket = (token: string): Socket => {
     // Return existing connected socket
     if (socket?.connected) {
-        console.log("Socket already connected, reusing");
+        logger.log("Socket already connected, reusing");
         return socket;
     }
-    
+
     // Cleanup only if disconnected
     if (socket && !socket.connected) {
-        console.log("Cleaning up disconnected socket");
+        logger.log("Cleaning up disconnected socket");
         socket.removeAllListeners();
         socket.disconnect();
         socket = null;
     }
 
     //create new socket connection
-    console.log("Initializing new socket connection to:", SOCKET_URL);
+    logger.log("Initializing new socket connection to:", SOCKET_URL);
     socket = io(SOCKET_URL, {
         auth: { token },
         transports: ["websocket", "polling"],
@@ -34,31 +35,45 @@ export const initializeSocket = (token: string): Socket => {
 
     //connection events
     socket.on("connect", () => {
-        // Socket connected
+        logger.log("Socket connected:", socket?.id);
     });
 
     socket.on("connect_error", (error) => {
-        // Silently handle connection errors - Socket.IO will auto-retry
+        // Handle token expiration gracefully
+        if (error.message === "Token has expired" || error.message.includes("jwt expired")) {
+            logger.warn("Session expired, redirecting to login...");
+            // Token expired - cleanup and redirect to login
+            disconnectSocket();
+            // Clear auth state
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('auth-storage');
+                window.location.href = '/login';
+            }
+            return;
+        }
+
+        // Log other connection errors only in development
+        logger.error("Socket connection error:", error.message);
     });
 
     socket.on("error", (error) => {
-        // Silently handle socket errors
+        logger.error("Socket error:", error);
     });
 
-    socket.on("disconnect", () => {
-        // Socket disconnected
+    socket.on("disconnect", (reason) => {
+        logger.log("Socket disconnected:", reason);
     });
 
-    socket.io.on("reconnect", () => {
-        // Socket reconnected
+    socket.io.on("reconnect", (attemptNumber) => {
+        logger.log("Socket reconnected after", attemptNumber, "attempts");
     });
 
-    socket.io.on("reconnect_attempt", () => {
-        // Reconnection attempt
+    socket.io.on("reconnect_attempt", (attemptNumber) => {
+        logger.log("Socket reconnection attempt", attemptNumber);
     });
 
     socket.on("reconnect_failed", () => {
-        // All reconnection attempts failed
+        logger.error("Socket reconnection failed after all attempts");
     });
 
     return socket;
@@ -70,7 +85,7 @@ export const getSocket = (): Socket | null => {
 
 export const disconnectSocket = () => {
     if (socket) {
-        console.log("Disconnecting socket");
+        logger.log("Disconnecting socket");
         socket.removeAllListeners();
         socket.disconnect();
         socket = null;
@@ -79,3 +94,4 @@ export const disconnectSocket = () => {
 
 // Don't export socket directly, always use getSocket()
 export default getSocket;
+

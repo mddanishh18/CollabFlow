@@ -14,7 +14,9 @@ import {
     createMessage,
     updateMessage,
     deleteMessage,
-    markMessagesAsRead
+    markMessagesAsRead,
+    getUnreadCount,
+    getWorkspaceUnreadCounts
 } from '../controllers/chatController.js';
 
 const router: Router = express.Router();
@@ -41,5 +43,9 @@ router.delete('/messages/:messageId', validateObjectId('messageId'), wrap(delete
 
 // Read receipts
 router.post('/channels/:channelId/read', validateObjectId('channelId'), wrap(markMessagesAsRead));
+
+// Unread counts
+router.get('/channels/:channelId/unread-count', validateObjectId('channelId'), wrap(getUnreadCount));
+router.get('/workspace/:workspaceId/unread-counts', validateObjectId('workspaceId'), wrap(getWorkspaceUnreadCounts));
 
 export default router;

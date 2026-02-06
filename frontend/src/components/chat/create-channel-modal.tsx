@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useAuthStore } from "@/store/auth-store";
@@ -35,7 +35,7 @@ export function CreateChannelModal({
     open,
     onOpenChange,
 }: CreateChannelModalProps) {
-    const { createChannel, loading } = useChat();
+    const { createChannel, loading, channels } = useChat();
     const { currentWorkspace } = useWorkspace();
     const { user } = useAuthStore();
     const { toast } = useToast();
@@ -47,6 +47,33 @@ export function CreateChannelModal({
 
     const members = currentWorkspace?.members || [];
 
+    // Get list of user IDs who already have DM channels with current user
+    const existingDMUserIds = channels
+        .filter(channel => channel.type === 'direct')
+        .flatMap(channel => 
+            channel.members
+                .filter(member => {
+                    const memberId = typeof member === 'string' ? member : member._id;
+                    return memberId !== user?._id;
+                })
+                .map(member => typeof member === 'string' ? member : member._id)
+        );
+
+    // Filter members based on channel type
+    const availableMembers = members.filter(member => {
+        const userId = typeof member.user === 'string' ? member.user : member.user._id;
+        
+        // Don't show current user
+        if (userId === user?._id) return false;
+        
+        // For direct messages, filter out users who already have DM with current user
+        if (type === 'direct' && existingDMUserIds.includes(userId)) {
+            return false;
+        }
+        
+        return true;
+    });
+
     // Check if current user is admin, owner, or the workspace owner
     const workspaceOwnerId = typeof currentWorkspace?.owner === 'string' 
         ? currentWorkspace?.owner 
@@ -55,7 +82,7 @@ export function CreateChannelModal({
     const isWorkspaceOwner = workspaceOwnerId === user?._id;
     
     // Check if user has owner/admin role in members array
-    const currentUserMember = members.find(m => {
+    const currentUserMember = availableMembers.find(m => {
         const userId = typeof m.user === 'string' ? m.user : m.user._id;
         return userId === user?._id;
     });
@@ -72,6 +99,11 @@ export function CreateChannelModal({
                           currentUserRole === 'owner' ||
                           apiUserRole === 'admin' ||
                           apiUserRole === 'owner';
+
+    // Reset selected members when channel type changes
+    useEffect(() => {
+        setSelectedMembers([]);
+    }, [type]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,7 +129,7 @@ export function CreateChannelModal({
         }
 
         try {
-            await createChannel({
+            const channel = await createChannel({
                 name: type === 'direct' ? 'DM' : name.trim(), // Auto-name for DMs
                 description: description.trim(),
                 type,
@@ -105,9 +137,14 @@ export function CreateChannelModal({
                 members: type === "public" ? [] : selectedMembers,
             });
 
+            // Show appropriate success message
+            const successMessage = type === 'direct'
+                ? 'Direct message channel opened'
+                : `Channel "${name}" created successfully`;
+
             toast({
                 title: "Success",
-                description: `Channel "${name}" created successfully`,
+                description: successMessage,
             });
 
             // Reset form
@@ -249,7 +286,7 @@ export function CreateChannelModal({
                             )}
                             <ScrollArea className="h-[200px] border rounded-md p-3">
                                 <div className="space-y-3">
-                                    {members.map((member) => {
+                                    {availableMembers.map((member) => {
                                         const userId = typeof member.user === 'string' ? member.user : member.user._id;
                                         const userName = typeof member.user === 'string' ? 'Unknown' : member.user.name;
                                         const userAvatar = typeof member.user === 'string' ? undefined : member.user.avatar;
@@ -280,9 +317,11 @@ export function CreateChannelModal({
                                         );
                                     })}
 
-                                    {members.length === 0 && (
+                                    {availableMembers.length === 0 && (
                                         <div className="text-center py-4 text-sm text-muted-foreground">
-                                            No members available
+                                            {type === 'direct' 
+                                                ? 'No available members. You already have DM channels with all workspace members.' 
+                                                : 'No members available'}
                                         </div>
                                     )}
                                 </div>

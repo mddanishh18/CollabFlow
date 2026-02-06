@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { useAuthStore } from "@/store/auth-store"
 import { useToast } from "@/hooks/use-toast"
 import { type WorkspaceRole } from "@/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,6 +67,17 @@ export default function MembersPage() {
         loading,
         error,
     } = useWorkspace()
+
+    const { user } = useAuthStore()
+
+    // Get user's role
+    const currentUserRole =
+        currentWorkspace?.userRole ||
+        currentWorkspace?.members?.find((m: any) =>
+            (typeof m.user === 'string' ? m.user : m.user?._id) === user?._id
+        )?.role
+
+    const canManage = currentUserRole === 'owner' || currentUserRole === 'admin'
 
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
     const [inviteData, setInviteData] = useState<InviteData>({ email: "", role: "member" })
@@ -225,10 +237,12 @@ export default function MembersPage() {
                         Manage your workspace team ({members.length} members)
                     </p>
                 </div>
-                <Button onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Invite Member
-                </Button>
+                {canManage && (
+                    <Button onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Invite Member
+                    </Button>
+                )}
             </div>
 
             {/* Search */}
@@ -284,7 +298,7 @@ export default function MembersPage() {
                                             {member.role}
                                         </Badge>
 
-                                        {member.role !== "owner" && (
+                                        {canManage && member.role !== "owner" && (
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -390,6 +404,6 @@ export default function MembersPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

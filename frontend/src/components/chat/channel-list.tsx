@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/use-chat";
+import { useWorkspacePresence } from "@/hooks/use-workspace-presence";
 import { Plus, Search, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +16,17 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ workspaceId }: ChannelListProps) {
-    const { channels, activeChannel, setActiveChannel } = useChat();
+    const { channels, activeChannel, setActiveChannel, fetchWorkspaceUnreadCounts } = useChat();
+    const { isUserOnline } = useWorkspacePresence(workspaceId);
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    // Fetch unread counts when component mounts or workspace changes
+    useEffect(() => {
+        if (workspaceId) {
+            fetchWorkspaceUnreadCounts(workspaceId);
+        }
+    }, [workspaceId, fetchWorkspaceUnreadCounts]);
 
     // Filter channels by search query
     const filteredChannels = channels.filter((channel) =>
@@ -36,18 +45,21 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
 
     return (
         <>
-            <div className="flex flex-col h-full border-r bg-background">
+            <div className="flex flex-col h-full border-r bg-card/50 backdrop-blur-md shadow-lg">
                 {/* Header */}
-                <div className="p-4 border-b space-y-4">
+                <div className="p-4 border-b border-border/50 bg-gradient-to-br from-muted/30 to-transparent space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Hash className="w-5 h-5 text-muted-foreground" />
-                            <h2 className="font-semibold">Channels</h2>
+                            <div className="p-1.5 rounded-lg bg-primary/10">
+                                <Hash className="w-4 h-4 text-primary" />
+                            </div>
+                            <h2 className="font-semibold text-base">Channels</h2>
                         </div>
                         <Button
                             size="icon"
                             variant="ghost"
                             onClick={() => setIsCreateModalOpen(true)}
+                            className="hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:shadow-sm rounded-xl"
                         >
                             <Plus className="w-4 h-4" />
                         </Button>
@@ -60,7 +72,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                             placeholder="Search channels..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 bg-background/50 border-border/50 focus:border-primary/50 transition-all duration-200 rounded-xl"
                         />
                     </div>
                 </div>
@@ -80,6 +92,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                                         channel={channel}
                                         isActive={activeChannel?._id === channel._id}
                                         onClick={() => handleChannelSelect(channel)}
+                                        workspaceId={workspaceId}
+                                        isUserOnline={isUserOnline}
                                     />
                                 ))}
                             </div>
@@ -97,6 +111,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                                         channel={channel}
                                         isActive={activeChannel?._id === channel._id}
                                         onClick={() => handleChannelSelect(channel)}
+                                        workspaceId={workspaceId}
+                                        isUserOnline={isUserOnline}
                                     />
                                 ))}
                             </div>
@@ -114,6 +130,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                                         channel={channel}
                                         isActive={activeChannel?._id === channel._id}
                                         onClick={() => handleChannelSelect(channel)}
+                                        workspaceId={workspaceId}
+                                        isUserOnline={isUserOnline}
                                     />
                                 ))}
                             </div>

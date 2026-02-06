@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, User, Calendar as CalendarIcon, Tag, Plus } from "lucide-react";
+import { Loader2, AlertCircle, User, Calendar as CalendarIcon, Tag, Plus, Info } from "lucide-react";
 import type { TaskStatus, TaskPriority, Label as LabelType } from "@/types";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -165,6 +165,18 @@ export function CreateTaskDialog({ open, onOpenChange, onClose, projectId, proje
                         Add a new task to this project.
                     </DialogDescription>
                 </DialogHeader>
+
+                <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                        <strong>Creating a task</strong>
+                        <ul className="mt-2 ml-4 list-disc space-y-0.5 text-muted-foreground">
+                            <li>Only project owners and editors can create tasks</li>
+                            <li>You can assign tasks to any project member</li>
+                            <li>Tasks are visible to all project members</li>
+                        </ul>
+                    </AlertDescription>
+                </Alert>
 
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">

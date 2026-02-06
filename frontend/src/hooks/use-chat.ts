@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import { useChatStore } from "@/store/chat-store";
+import { useAuthStore } from "@/store/auth-store";
 import type { Message, Channel, CreateChannelData, TypingUser } from "@/types";
 import { useSocket } from "@/hooks/use-socket";
+import { logger } from "@/lib/logger";
+
+// Global flag to ensure socket listeners are only registered once
+let socketListenersRegistered = false;
 
 // ===== Types =====
 interface ApiErrorResponse {
@@ -33,6 +38,8 @@ interface UseChatReturn {
     editMessage: (channelId: string, messageId: string, content: string) => Promise<Message>;
     deleteMessage: (channelId: string, messageId: string) => Promise<void>;
     markAsRead: (channelId: string) => Promise<void>;
+    fetchUnreadCount: (channelId: string) => Promise<number>;
+    fetchWorkspaceUnreadCounts: (workspaceId: string) => Promise<void>;
 
     // Real-time actions
     joinChannel: (channelId: string) => void;
@@ -48,7 +55,7 @@ export const useChat = (): UseChatReturn => {
     // Get state from store
     const channels = useChatStore((state) => state.channels);
     const activeChannel = useChatStore((state) => state.activeChannel);
-    
+
     // Use refs to access latest values without triggering re-renders
     const activeChannelRef = useRef(activeChannel);
     const messagesRef = useRef<Record<string, Message[]>>({});
@@ -230,17 +237,16 @@ export const useChat = (): UseChatReturn => {
                 mentions
             });
             const newMessage = response.data.data || response.data;
-            
-            // Backend now broadcasts via socket, so we don't need to emit from frontend
-            // Just add to local store immediately for instant feedback
-            addMessageToStore(channelId, newMessage);
-            
+
+            // Backend broadcasts message:new via socket, which will add it to store
+            // Don't add it here to avoid duplicates
+
             return newMessage;
         } catch (err) {
             handleError(err);
             throw err;
         }
-    }, [setError, addMessageToStore, handleError]);
+    }, [setError, handleError]);
 
     const editMessage = useCallback(async (
         channelId: string,
@@ -252,7 +258,7 @@ export const useChat = (): UseChatReturn => {
             const response = await api.patch(`/api/chat/messages/${messageId}`, { content });
             const updatedMessage = response.data.data || response.data;
             updateMessageInStore(channelId, messageId, updatedMessage);
-            
+
             // Emit via socket for real-time updates
             if (socket && isConnected) {
                 socket.emit('message:edit', {
@@ -260,7 +266,7 @@ export const useChat = (): UseChatReturn => {
                     message: updatedMessage
                 });
             }
-            
+
             return updatedMessage;
         } catch (err) {
             handleError(err);
@@ -273,7 +279,7 @@ export const useChat = (): UseChatReturn => {
             setError(null);
             await api.delete(`/api/chat/messages/${messageId}`);
             removeMessageFromStore(channelId, messageId);
-            
+
             // Emit via socket for real-time updates
             if (socket && isConnected) {
                 socket.emit('message:delete', {
@@ -292,18 +298,79 @@ export const useChat = (): UseChatReturn => {
             setError(null);
             await api.post(`/api/chat/channels/${channelId}/read`, {});
             clearUnreadCount(channelId);
+
+            // Also emit via socket for real-time updates
+            const currentUserId = useAuthStore.getState().user?._id;
+            const unreadMessageIds = (messages[channelId] || [])
+                .filter(msg => {
+                    const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender._id;
+                    return senderId !== currentUserId && !msg.readBy?.some(r => {
+                        const readerId = typeof r.user === 'string' ? r.user : r.user._id;
+                        return readerId === currentUserId;
+                    });
+                })
+                .map(msg => msg._id);
+
+            if (socket && isConnected && unreadMessageIds.length > 0) {
+                socket.emit('message:read', {
+                    channelId,
+                    messageIds: unreadMessageIds
+                });
+            }
         } catch (err) {
             handleError(err);
             throw err;
         }
-    }, [setError, clearUnreadCount, handleError]);
+    }, [setError, clearUnreadCount, handleError, socket, isConnected, messages]);
+
+    // Fetch unread count for a channel
+    const fetchUnreadCount = useCallback(async (channelId: string): Promise<number> => {
+        try {
+            const response = await api.get(`/api/chat/channels/${channelId}/unread-count`);
+            const count = response.data?.data?.unreadCount || 0;
+            // Update local store
+            if (count > 0) {
+                useChatStore.setState((state) => ({
+                    unreadCounts: { ...state.unreadCounts, [channelId]: count }
+                }));
+            }
+            return count;
+        } catch (err) {
+            console.error('Failed to fetch unread count:', err);
+            return 0;
+        }
+    }, []);
+
+    // Fetch all unread counts for workspace
+    const fetchWorkspaceUnreadCounts = useCallback(async (workspaceId: string): Promise<void> => {
+        try {
+            const response = await api.get(`/api/chat/workspace/${workspaceId}/unread-counts`);
+            const data = response.data; // Fixed: was response.data?.data
+
+            if (data?.channels) {
+                const newUnreadCounts: Record<string, number> = {};
+                data.channels.forEach((channel: { channelId: string; unreadCount: number }) => {
+                    newUnreadCounts[channel.channelId] = channel.unreadCount;
+                });
+
+                logger.log('[fetchWorkspaceUnreadCounts] Setting unread counts:', newUnreadCounts);
+
+                // Update store with all unread counts
+                useChatStore.setState((state) => ({
+                    unreadCounts: { ...state.unreadCounts, ...newUnreadCounts }
+                }));
+            }
+        } catch (err) {
+            logger.error('Failed to fetch workspace unread counts:', err);
+        }
+    }, []);
 
     // ===== Real-time Actions =====
     const joinChannel = useCallback((channelId: string): void => {
         if (socket && isConnected) {
             socket.emit('channel:join', channelId, (response: { success: boolean; error?: string }) => {
                 if (!response.success) {
-                    console.error('[useChat] Failed to join channel:', response.error);
+                    logger.error('[useChat] Failed to join channel:', response.error);
                     setError(response.error || 'Failed to join channel');
                 }
             });
@@ -314,7 +381,7 @@ export const useChat = (): UseChatReturn => {
         if (socket && isConnected) {
             socket.emit('channel:leave', channelId, (response: { success: boolean; error?: string }) => {
                 if (!response.success) {
-                    console.error('[useChat] Failed to leave channel:', response.error);
+                    logger.error('[useChat] Failed to leave channel:', response.error);
                 }
             });
         }
@@ -322,11 +389,11 @@ export const useChat = (): UseChatReturn => {
 
     // Debounced typing indicator
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
+
     const startTyping = useCallback((channelId: string): void => {
         if (socket && isConnected) {
             socket.emit('typing:start', channelId);
-            
+
             // Auto-stop typing after 3 seconds
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
@@ -352,65 +419,141 @@ export const useChat = (): UseChatReturn => {
         messagesRef.current = messages;
     }, [messages]);
 
-    // ===== Socket Event Listeners =====
+    // Auto-join all workspace channels for real-time updates
     useEffect(() => {
-        if (!socket || !isConnected) {
+        if (!socket || !isConnected || channels.length === 0) return;
+
+        logger.log('[useChat] Auto-joining all workspace channels for real-time updates:', channels.length);
+
+        // Join all channels to receive broadcast events (like unread:increment)
+        channels.forEach(channel => {
+            logger.log('[useChat] Joining channel:', channel._id, channel.name);
+            socket.emit('channel:join', channel._id, (response: { success: boolean; error?: string }) => {
+                if (!response.success) {
+                    logger.error('[useChat] Failed to join channel:', response.error);
+                }
+            });
+        });
+
+        // Cleanup: leave all channels when unmounting or disconnecting
+        return () => {
+            logger.log('[useChat] Leaving all channels (cleanup)');
+            channels.forEach(channel => {
+                socket.emit('channel:leave', channel._id);
+            });
+        };
+    }, [socket, isConnected, channels]); // ✅ Fixed: removed joinChannel, leaveChannel dependencies
+
+    // ===== Socket Event Listeners (Singleton Pattern) =====
+    useEffect(() => {
+        if (!socket || !isConnected || socketListenersRegistered) {
             return;
         }
 
+        logger.log('[useChat] Registering socket event listeners (ONCE)');
+        socketListenersRegistered = true;
+
         // Error handler
         const handleSocketError = (error: { event?: string; message: string }) => {
-            console.error('[useChat] Socket error:', error);
-            setError(error.message || 'Socket communication error');
+            logger.error('[useChat] Socket error:', error);
         };
 
         // Message events - use refs to access latest values without dependency
         const handleNewMessage = (message: Message) => {
-            console.log('[useChat] Received message:new', message);
+            logger.log('[useChat] Received message:new', message);
             const channelId = typeof message.channel === 'string' ? message.channel : message.channel._id;
-            addMessageToStore(channelId, message);
-            // Use ref to check active channel without dependency
-            if (activeChannelRef.current?._id !== channelId) {
-                incrementUnreadCount(channelId);
+            const store = useChatStore.getState();
+
+            // Add message to store (has duplicate detection)
+            store.addMessage(channelId, message);
+
+            // Increment unread count ONLY if:
+            // 1. This is not from the current user (they sent it)
+            // 2. The channel is not currently active (user is viewing another channel)
+            const currentUser = useAuthStore.getState().user;
+            const currentUserId = currentUser?._id || (currentUser as any)?.id;
+            const senderId = typeof message.sender === 'string' ? message.sender : message.sender._id;
+            const activeChannel = store.activeChannel;
+
+            // Only increment if message is from someone else AND channel is not active
+            if (senderId !== currentUserId && activeChannel?._id !== channelId) {
+                logger.log('[useChat] 🔺 Incrementing unread for channel:', channelId);
+                store.incrementUnreadCount(channelId);
+            } else {
+                logger.log('[useChat] ⏭️  NOT incrementing (sender or active channel)', {
+                    isSender: senderId === currentUserId,
+                    isActiveChannel: activeChannel?._id === channelId
+                });
+            }
+        };
+
+
+
+        // Unread count events (DISABLED - using message:new instead)
+        const handleUnreadIncrement = (data: { channelId: string; messageId: string }) => {
+            logger.log('[useChat] Received unread:increment (IGNORED - using message:new logic)');
+        };
+
+        // Read receipt events
+        const handleMessageSeen = (data: { userId: string; user: any; messageIds: string[]; readAt: Date }) => {
+            logger.log('[useChat] Received message:seen', data);
+            // Update readBy for all affected messages
+            const currentMessages = useChatStore.getState().messages;
+            const channelIds = Object.keys(currentMessages);
+            for (const channelId of channelIds) {
+                const channelMessages = currentMessages[channelId] || [];
+                channelMessages.forEach(msg => {
+                    if (data.messageIds.includes(msg._id)) {
+                        const existingReadBy = msg.readBy || [];
+                        const alreadyRead = existingReadBy.some(r => {
+                            const readerId = typeof r.user === 'string' ? r.user : r.user._id;
+                            return readerId === data.userId;
+                        });
+                        if (!alreadyRead) {
+                            useChatStore.getState().updateMessage(channelId, msg._id, {
+                                readBy: [...existingReadBy, { user: data.user || data.userId, readAt: data.readAt }]
+                            });
+                        }
+                    }
+                });
             }
         };
 
         const handleUpdatedMessage = (message: Message) => {
-            console.log('[useChat] Received message:updated', message);
+            logger.log('[useChat] Received message:updated', message);
             const channelId = typeof message.channel === 'string' ? message.channel : message.channel._id;
-            updateMessageInStore(channelId, message._id, message);
+            useChatStore.getState().updateMessage(channelId, message._id, message);
         };
 
         const handleDeletedMessage = (data: { channelId: string; messageId: string } | string) => {
-            console.log('[useChat] Received message:deleted', data);
+            logger.log('[useChat] Received message:deleted', data);
             if (typeof data === 'string') {
-                // Use ref to access current messages
+                // Use current messages from store
+                const currentMessages = useChatStore.getState().messages;
                 const messageId = data;
-                const channelIds = Object.keys(messagesRef.current);
+                const channelIds = Object.keys(currentMessages);
                 for (const channelId of channelIds) {
-                    const channelMessages = messagesRef.current[channelId];
+                    const channelMessages = currentMessages[channelId];
                     if (channelMessages?.some(m => m._id === messageId)) {
-                        removeMessageFromStore(channelId, messageId);
+                        useChatStore.getState().removeMessage(channelId, messageId);
                         break;
                     }
                 }
             } else {
-                removeMessageFromStore(data.channelId, data.messageId);
+                useChatStore.getState().removeMessage(data.channelId, data.messageId);
             }
         };
 
-        // Typing events - use ref for activeChannel
+        // Typing events
         const handleUserTyping = (data: { userId: string; user: { _id: string; name: string; avatar?: string }; channelId: string }) => {
-            const targetChannelId = data.channelId || activeChannelRef.current?._id;
-            if (targetChannelId) {
-                addTypingUser(targetChannelId, { userId: data.userId, user: data.user });
+            if (data.channelId) {
+                useChatStore.getState().addTypingUser(data.channelId, { userId: data.userId, user: data.user });
             }
         };
 
         const handleUserStopTyping = (data: { userId: string; channelId: string }) => {
-            const targetChannelId = data.channelId || activeChannelRef.current?._id;
-            if (targetChannelId) {
-                removeTypingUser(targetChannelId, data.userId);
+            if (data.channelId) {
+                useChatStore.getState().removeTypingUser(data.channelId, data.userId);
             }
         };
 
@@ -421,18 +564,23 @@ export const useChat = (): UseChatReturn => {
         socket.on('message:deleted', handleDeletedMessage);
         socket.on('user:typing', handleUserTyping);
         socket.on('user:stopTyping', handleUserStopTyping);
+        socket.on('unread:increment', handleUnreadIncrement);
+        socket.on('message:seen', handleMessageSeen);
 
         // Cleanup
         return () => {
-            console.log('[useChat] Cleaning up socket listeners');
+            logger.log('[useChat] Cleaning up socket listeners');
             socket.off('error', handleSocketError);
             socket.off('message:new', handleNewMessage);
             socket.off('message:updated', handleUpdatedMessage);
             socket.off('message:deleted', handleDeletedMessage);
             socket.off('user:typing', handleUserTyping);
             socket.off('user:stopTyping', handleUserStopTyping);
+            socket.off('unread:increment', handleUnreadIncrement);
+            socket.off('message:seen', handleMessageSeen);
+            socketListenersRegistered = false;
         };
-    }, [socket, isConnected, addMessageToStore, updateMessageInStore, removeMessageFromStore, addTypingUser, removeTypingUser, incrementUnreadCount, setError]);
+    }, [socket, isConnected]); // ✅ Only depends on socket and connection state
 
     return {
         // State
@@ -455,6 +603,8 @@ export const useChat = (): UseChatReturn => {
 
         // Message actions
         fetchMessages,
+        fetchUnreadCount,
+        fetchWorkspaceUnreadCounts,
         sendMessage,
         editMessage,
         deleteMessage,

@@ -6,6 +6,7 @@ import { socketAuthMiddleware, AuthenticatedSocket } from "../middleware/socketA
 import { registerTaskHandlers } from "../handlers/taskHandlers.js";
 import { registerChatHandlers } from "../handlers/chatHandlers.js";
 import { registerPresenceHandlers } from "../handlers/presenceHandlers.js";
+import { logger } from "../utils/logger.js";
 
 let io: Server;
 
@@ -35,9 +36,9 @@ export const initializeSocket = async (httpServer: HttpServer) => {
             new Promise((resolve) => subClient.on("ready", resolve)),
         ]);
         io.adapter(createAdapter(pubClient, subClient));
-        console.log("Socket.io Redis adapter initialized");
+        logger.log("Socket.io Redis adapter initialized");
     } else {
-        console.log("Socket.io running without Redis adapter(single server mode)");
+        logger.log("Socket.io running without Redis adapter (single server mode)");
     }
 
     //apply middleware
@@ -45,11 +46,10 @@ export const initializeSocket = async (httpServer: HttpServer) => {
 
     io.on("connection", (socket) => {
         const authSocket = socket as AuthenticatedSocket;
-        console.log(`User connected: ${authSocket.user.name} (${authSocket.userId})`);
 
         // Global error handler for this socket
         socket.on("error", (error) => {
-            console.error(`[Socket] Error for user ${authSocket.userId}:`, error);
+            logger.error(`[Socket] Error for user ${authSocket.userId}:`, error);
         });
 
         //register all event handlers
@@ -58,7 +58,7 @@ export const initializeSocket = async (httpServer: HttpServer) => {
         registerPresenceHandlers(io, authSocket);
 
         authSocket.on("disconnect", (reason) => {
-            console.log(`User disconnected: ${authSocket.user.name} (${authSocket.userId}) - Reason: ${reason}`);
+            // Silently handle disconnection - normal operation
         });
     });
 

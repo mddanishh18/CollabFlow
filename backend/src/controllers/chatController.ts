@@ -49,7 +49,7 @@ export const getWorkspaceChannels = async (req: AuthenticatedRequest, res: Respo
 };
 
 export const getChannelById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const {channelId} = req.params;
+    const { channelId } = req.params;
     const userId = req.user._id;
 
     try {
@@ -105,7 +105,7 @@ export const getChannelById = async (req: AuthenticatedRequest, res: Response): 
 
 
 export const createChannel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const {name, description, type, members, project, workspaceId} = req.body;
+    const { name, description, type, members, project, workspaceId } = req.body;
     const userId = req.user._id;
 
     try {
@@ -155,6 +155,35 @@ export const createChannel = async (req: AuthenticatedRequest, res: Response): P
         // For direct messages, auto-generate name as 'DM' (frontend will display other user's name)
         const channelName = type === 'direct' ? 'DM' : name.trim();
 
+        // For direct messages, check if a DM already exists between these users
+        if (type === 'direct') {
+            if (!members || members.length !== 1) {
+                res.status(400).json({
+                    success: false,
+                    message: "Direct messages require exactly one other member"
+                });
+                return;
+            }
+
+            const otherUserId = members[0];
+            
+            // Check for existing DM between these two users
+            const existingDM = await Channel.findDirectMessage(workspaceId, userId, otherUserId);
+            
+            if (existingDM) {
+                // Return the existing DM instead of creating a duplicate
+                await existingDM.populate('members', 'name email avatar');
+                await existingDM.populate('workspace', 'name');
+                
+                res.status(200).json({
+                    success: true,
+                    message: "Direct message channel already exists",
+                    data: existingDM
+                });
+                return;
+            }
+        }
+
         // For public channels, automatically add ALL workspace members
         let channelMembers: string[];
         if (type === 'public') {
@@ -173,12 +202,10 @@ export const createChannel = async (req: AuthenticatedRequest, res: Response): P
             } else {
                 ownerId = (owner as any)._id?.toString() || owner.toString();
             }
-            
+
             // Combine and deduplicate (owner might also be in members array)
             const allIds = new Set([ownerId, ...allMemberIds]);
             channelMembers = Array.from(allIds);
-            
-            console.log(`[createChannel] Public channel - Adding ${channelMembers.length} members:`, channelMembers);
         } else {
             // For private/direct, use provided members plus creator
             channelMembers = [userId, ...(members || [])];
@@ -499,6 +526,7 @@ export const createMessage = async (req: AuthenticatedRequest, res: Response): P
         await channel.save();
 
         await message.populate('sender', 'name email avatar');
+        await message.populate('readBy.user', 'name email avatar');
         if (replyTo) {
             await message.populate({
                 path: 'replyTo',
@@ -508,14 +536,13 @@ export const createMessage = async (req: AuthenticatedRequest, res: Response): P
         }
 
         // Broadcast message via socket to all users in the channel
+        // Frontend will receive it via socket and add to store
         try {
             const io = getIO();
-            console.log(`[createMessage] Broadcasting message to channel:${channelId}`);
             io.to(`channel:${channelId}`).emit('message:new', message);
-            console.log(`[createMessage] Emitted 'message:new' to channel:${channelId}`);
         } catch (socketError) {
-            console.error('[createMessage] Socket broadcast error:', socketError);
-            // Don't fail the request if socket broadcast fails
+            // Silent fail - don't block HTTP response if socket fails
+            console.error('Socket broadcast error:', socketError);
         }
 
         res.status(201).json({
@@ -684,6 +711,145 @@ export const markMessagesAsRead = async (req: AuthenticatedRequest, res: Respons
         res.status(500).json({
             success: false,
             message: "Failed to mark messages as read",
+            error: (error as Error).message
+        });
+    }
+};
+
+/**
+ * Get unread message count for a channel
+ * GET /api/chat/channels/:channelId/unread-count
+ */
+export const getUnreadCount = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { channelId } = req.params;
+    const userId = req.user._id;
+
+    try {
+        const channel = await Channel.findById(channelId);
+        if (!channel) {
+            res.status(404).json({
+                success: false,
+                message: "Channel not found"
+            });
+            return;
+        }
+
+        // Check access
+        if (channel.type === 'public') {
+            const workspace = await Workspace.findById(channel.workspace);
+            if (!workspace || !workspace.isMember(userId)) {
+                res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+                return;
+            }
+        } else if (!channel.isMember(userId)) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied"
+            });
+            return;
+        }
+
+        // Convert userId to ObjectId for proper comparison
+        const userObjectId = new Types.ObjectId(userId);
+
+        // Count messages where:
+        // 1. Sender is not the current user
+        // 2. User is NOT in the readBy array (using $nin with dot notation)
+        // 3. Message is not deleted
+        const query = {
+            channel: channelId,
+            sender: { $ne: userObjectId },
+            'readBy.user': { $nin: [userObjectId] },
+            isDeleted: false
+        };
+
+        const unreadCount = await Message.countDocuments(query);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                channelId,
+                unreadCount
+            }
+        });
+    } catch (error) {
+        console.error('Get unread count error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get unread count",
+            error: (error as Error).message
+        });
+    }
+};
+
+/**
+ * Get unread counts for all channels in a workspace
+ * GET /api/chat/workspace/:workspaceId/unread-counts
+ */
+export const getWorkspaceUnreadCounts = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { workspaceId } = req.params;
+    const userId = req.user._id;
+
+    try {
+        const workspace = await Workspace.findById(workspaceId);
+        if (!workspace) {
+            res.status(404).json({
+                success: false,
+                message: "Workspace not found"
+            });
+            return;
+        }
+
+        if (!workspace.isMember(userId)) {
+            res.status(403).json({
+                success: false,
+                message: "Access denied"
+            });
+            return;
+        }
+
+        // Get all channels user has access to
+        const channels = await Channel.getWorkspaceChannels(workspaceId, userId);
+        const channelIds = channels.map(c => c._id);
+
+        // Convert userId to ObjectId for proper comparison
+        const userObjectId = new Types.ObjectId(userId);
+
+        // Get unread counts for each channel
+        const unreadCounts = await Promise.all(
+            channelIds.map(async (channelId) => {
+                const count = await Message.countDocuments({
+                    channel: channelId,
+                    sender: { $ne: userObjectId },
+                    'readBy.user': { $nin: [userObjectId] },
+                    isDeleted: false
+                });
+                return {
+                    channelId: channelId.toString(),
+                    unreadCount: count
+                };
+            })
+        );
+
+        // Calculate total unread
+        const totalUnread = unreadCounts.reduce((sum, item) => sum + item.unreadCount, 0);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                workspaceId,
+                totalUnread,
+                channels: unreadCounts
+            }
+        });
+    } catch (error) {
+        console.error('Get workspace unread counts error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get unread counts",
             error: (error as Error).message
         });
     }

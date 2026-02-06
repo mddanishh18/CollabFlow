@@ -122,8 +122,6 @@ export const optionalAuth: AuthMiddleware = async (req, res, next) => {
         }
     } catch (error) {
         // Silently fail - token is optional
-        const err = error as Error;
-        console.log('Optional auth failed:', err.message);
     }
 
     next();

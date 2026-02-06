@@ -51,7 +51,7 @@ export function formatDate(date: Date | string | null | undefined, format: DateF
  * Capitalize the first letter of a string
  */
 export function capitalize(str: string): string {
-    if (!str) return '';
+    if (!str || typeof str !== 'string') return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 

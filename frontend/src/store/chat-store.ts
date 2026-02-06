@@ -72,8 +72,8 @@ export const useChatStore = create<ChatState>()(
             })),
 
             updateChannel: (channelId: string, updates: Partial<Channel>) => set((state) => ({
-                channels: state.channels.map(c => 
-                    c._id === channelId ? { ...c, ...updates} : c
+                channels: state.channels.map(c =>
+                    c._id === channelId ? { ...c, ...updates } : c
                 )
             })),
 
@@ -87,7 +87,6 @@ export const useChatStore = create<ChatState>()(
                 // Check if message already exists (prevent duplicates)
                 const isDuplicate = existingMessages.some(m => m._id === message._id);
                 if (isDuplicate) {
-                    console.log('[ChatStore] Duplicate message detected, skipping:', message._id);
                     return state;
                 }
                 return {
@@ -101,7 +100,7 @@ export const useChatStore = create<ChatState>()(
             updateMessage: (channelId: string, messageId: string, updates: Partial<Message>) => set((state) => ({
                 messages: {
                     ...state.messages,
-                    [channelId]: state.messages[channelId].map(m => 
+                    [channelId]: state.messages[channelId].map(m =>
                         m._id === messageId ? { ...m, ...updates } : m
                     )
                 }

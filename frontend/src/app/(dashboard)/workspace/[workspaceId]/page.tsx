@@ -191,11 +191,7 @@ export default function WorkspaceOverviewPage() {
                                 <Settings className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
-                                        {currentWorkspace?.settings?.visibility || "private"}
-                                    </Badge>
-                                </div>
+                                <p className="text-sm font-medium">Configure workspace</p>
                                 <p className="text-xs text-muted-foreground mt-1">Workspace configuration</p>
                             </CardContent>
                         </Card>

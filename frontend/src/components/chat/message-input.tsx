@@ -17,7 +17,9 @@ export function MessageInput({ channelId }: MessageInputProps) {
 
     const [message, setMessage] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [shouldRefocus, setShouldRefocus] = useState(false);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Handle typing indicator
     const handleTyping = () => {
@@ -45,13 +47,21 @@ export function MessageInput({ channelId }: MessageInputProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId]);
 
+    // Refocus textarea after sending message
+    useEffect(() => {
+        if (shouldRefocus && !isSending && message === "") {
+            textareaRef.current?.focus();
+            setShouldRefocus(false);
+        }
+    }, [shouldRefocus, isSending, message]);
+
     const handleSend = async () => {
         const trimmedMessage = message.trim();
         if (!trimmedMessage || isSending) return;
 
         try {
             setIsSending(true);
-            
+
             // Stop typing indicator
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
@@ -67,9 +77,10 @@ export function MessageInput({ channelId }: MessageInputProps) {
             }
 
             await sendMessage(channelId, trimmedMessage, undefined, mentions.length > 0 ? mentions : undefined);
-            
-            // Clear input
+
+            // Clear input and trigger refocus
             setMessage("");
+            setShouldRefocus(true);
         } catch (error) {
             toast({
                 title: "Error",
@@ -127,6 +138,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
                 {/* Message Input */}
                 <div className="flex-1 relative">
                     <Textarea
+                        ref={textareaRef}
                         placeholder="Type a message..."
                         value={message}
                         onChange={handleChange}
@@ -135,7 +147,7 @@ export function MessageInput({ channelId }: MessageInputProps) {
                         className="min-h-11 max-h-50 resize-none pr-10"
                         rows={1}
                     />
-                    
+
                     {/* Emoji Button (inside textarea) */}
                     <Button
                         type="button"

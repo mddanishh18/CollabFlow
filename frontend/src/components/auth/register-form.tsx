@@ -104,7 +104,7 @@ export default function RegisterForm() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
+        <div className="min-h-dvh flex items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
             <div className="max-w-sm sm:max-w-md w-full">
                 <Card className="bg-card text-card-foreground rounded-lg sm:rounded-xl shadow-lg p-6 sm:p-8 border border-border">
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">

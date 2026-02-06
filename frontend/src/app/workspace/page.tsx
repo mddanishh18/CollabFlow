@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Mail, CheckCircle, Loader2, Sparkles, AlertCircle, RefreshCw } from "lucide-react"
+import { Plus, Mail, CheckCircle, Loader2, Sparkles, AlertCircle, RefreshCw, ArrowRight } from "lucide-react"
 
 interface Invitation {
     _id: string
@@ -58,13 +58,6 @@ export default function WorkspaceRedirect() {
         })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, _hasHydrated, router])
-
-    useEffect(() => {
-        // Auto-redirect if user has workspaces and no pending invitations
-        if (!loading && workspaces.length > 0 && (!invitations || invitations.length === 0)) {
-            router.push(`/workspace/${workspaces[0]._id}`)
-        }
-    }, [workspaces, invitations, loading, router])
 
     const handleAcceptInvitation = async (token: string) => {
         setAcceptingId(token)
@@ -165,6 +158,7 @@ export default function WorkspaceRedirect() {
 
     const hasPendingInvitations = invitations && invitations.length > 0
     const hasNoWorkspaces = workspaces.length === 0
+    const hasWorkspaces = workspaces.length > 0
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-background via-background to-muted/20 relative">
@@ -227,6 +221,45 @@ export default function WorkspaceRedirect() {
                     </Card>
                 )}
 
+                {/* User's Workspaces */}
+                {hasWorkspaces && (
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle>Your Workspaces</CardTitle>
+                                    <CardDescription>Select a workspace to continue</CardDescription>
+                                </div>
+                                <Button onClick={() => setCreateDialogOpen(true)} size="sm">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    New
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {workspaces.map((workspace) => (
+                                <button
+                                    key={workspace._id}
+                                    onClick={() => router.push(`/workspace/${workspace._id}`)}
+                                    className="w-full text-left p-4 border rounded-lg hover:border-primary/50 hover:bg-accent/5 transition-colors group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-semibold text-base md:text-lg truncate group-hover:text-primary transition-colors">
+                                                {workspace.name}
+                                            </h3>
+                                            <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                                                {workspace.description || "No description"}
+                                            </p>
+                                        </div>
+                                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                    </div>
+                                </button>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Welcome / No Workspaces */}
                 {hasNoWorkspaces && (
                     <Card className="border-2 border-dashed">
@@ -239,14 +272,18 @@ export default function WorkspaceRedirect() {
 
                             <p className="text-sm md:text-base text-muted-foreground mb-6 max-w-md">
                                 {hasPendingInvitations
-                                    ? "Accept an invitation above or create your own workspace to get started"
-                                    : "Create your first workspace to start collaborating with your team"}
+                                    ? "You have pending invitations above! Accept them to join existing workspaces, or create your own workspace to get started."
+                                    : "Create your first workspace to start collaborating with your team."}
                             </p>
 
-                            <Button onClick={() => setCreateDialogOpen(true)} size="lg">
+                            <Button onClick={() => setCreateDialogOpen(true)} size="lg" className="mb-4">
                                 <Plus className="mr-2 h-5 w-5" />
                                 Create Your First Workspace
                             </Button>
+
+                            <p className="text-xs text-muted-foreground mt-4 max-w-md">
+                                💡 To join another workspace, ask the workspace admin to send you an invitation
+                            </p>
                         </CardContent>
                     </Card>
                 )}

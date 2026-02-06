@@ -115,6 +115,7 @@ messageSchema.statics.getChannelMessages = async function (
         .populate('sender', 'name avatar')
         .populate('replyTo')
         .populate('mentions', 'name')
+        .populate('readBy.user', 'name email avatar')
         .exec();
 };
 

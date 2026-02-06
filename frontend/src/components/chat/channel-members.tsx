@@ -74,7 +74,7 @@ export function ChannelMembers({ channel }: ChannelMembersProps) {
 
         try {
             setAddingMembers(true);
-            
+
             // Add members one by one
             for (const memberId of selectedNewMembers) {
                 await addMember(channel._id, memberId);
@@ -87,7 +87,7 @@ export function ChannelMembers({ channel }: ChannelMembersProps) {
 
             setSelectedNewMembers([]);
             setAddMemberDialogOpen(false);
-            
+
             // Refresh the page to show updated members
             window.location.reload();
         } catch (error) {
@@ -102,16 +102,16 @@ export function ChannelMembers({ channel }: ChannelMembersProps) {
     };
 
     const toggleMemberSelection = (memberId: string) => {
-        setSelectedNewMembers(prev => 
-            prev.includes(memberId) 
+        setSelectedNewMembers(prev =>
+            prev.includes(memberId)
                 ? prev.filter(id => id !== memberId)
                 : [...prev, memberId]
         );
     };
 
     const members = channel.members || [];
-    const isOwner = typeof channel.createdBy === 'string' 
-        ? channel.createdBy === user?._id 
+    const isOwner = typeof channel.createdBy === 'string'
+        ? channel.createdBy === user?._id
         : channel.createdBy?._id === user?._id;
 
     // Get workspace members who are not already in the channel (for private channels)
@@ -120,13 +120,6 @@ export function ChannelMembers({ channel }: ChannelMembersProps) {
     const availableMembers = workspaceMembers.filter(wm => {
         const wmId = typeof wm.user === 'string' ? wm.user : wm.user._id;
         return !channelMemberIds.includes(wmId);
-    });
-
-    console.log('[ChannelMembers] Debug:', {
-        channelType: channel.type,
-        isOwner,
-        availableMembersCount: availableMembers.length,
-        shouldShowAddButton: channel.type === 'private' && isOwner && availableMembers.length > 0
     });
 
     return (
@@ -233,11 +226,11 @@ export function ChannelMembers({ channel }: ChannelMembersProps) {
                             const userName = typeof member === 'string' ? 'Unknown' : member.name;
                             const userEmail = typeof member === 'string' ? '' : member.email;
                             const userAvatar = typeof member === 'string' ? undefined : member.avatar;
-                            
+
                             const isMemberOwner = typeof channel.createdBy === 'string'
                                 ? channel.createdBy === userId
                                 : channel.createdBy?._id === userId;
-                            
+
                             const isCurrentUser = userId === user?._id;
 
                             return (

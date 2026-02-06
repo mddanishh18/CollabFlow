@@ -2,6 +2,7 @@ import { Response } from 'express';
 import Project, { IProjectDocument } from "../models/Project.js";
 import Workspace from "../models/Workspace.js";
 import { AuthenticatedRequest } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 export const createProject = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { name, description, workspace: workspaceId, status, visibility, priority, startDate, dueDate, tags, color, settings } = req.body;
@@ -128,16 +129,29 @@ export const getProjectById = async (req: AuthenticatedRequest, res: Response): 
         // Check access: project member OR workspace member (for workspace-visible projects)
         let canView = project.canView(userId);
 
-        // If project has workspace visibility and user is not a project member,
-        // check if they are a workspace member
+        logger.log('Access check for project:', projectId);
+        logger.log('User ID:', userId);
+        logger.log('Project owner:', project.owner);
+        logger.log('Project visibility:', project.visibility);
+        logger.log('Can view (project member):', canView);
+
+        // For workspace visibility: allow workspace members to view even if not project members
         if (!canView && project.visibility === 'workspace') {
-            const workspace = await Workspace.findById(project.workspace);
+            const workspaceId = typeof project.workspace === 'string'
+                ? project.workspace
+                : (project.workspace as any)._id || project.workspace; // Safer access
+
+            const workspace = await Workspace.findById(workspaceId);
+            logger.log('Checking workspace membership for workspace:', workspaceId);
+            logger.log('Workspace found:', !!workspace);
             if (workspace && workspace.isMember(userId)) {
                 canView = true;
+                logger.log('User is workspace member, granting access to workspace-visibility project');
             }
         }
 
         if (!canView) {
+            logger.log('Access denied for user:', userId);
             res.status(403).json({
                 success: false,
                 message: 'Access denied'
@@ -148,10 +162,27 @@ export const getProjectById = async (req: AuthenticatedRequest, res: Response): 
         const userRole = project.getMemberRole(userId);
         const canEdit = project.canEdit(userId);
 
+        // Calculate progress from tasks
+        let calculatedProgress = 0;
+        try {
+            const Task = (await import('../models/Task.js')).default;
+            const tasks = await Task.find({ project: projectId });
+            if (tasks.length > 0) {
+                const completedTasks = tasks.filter(t => t.status === 'done').length;
+                calculatedProgress = Math.round((completedTasks / tasks.length) * 100);
+            }
+        } catch (error) {
+            console.error('Error calculating progress:', error);
+            calculatedProgress = project.progress; // Fallback to manual progress
+        }
+
         res.status(200).json({
             success: true,
             data: {
-                project,
+                project: {
+                    ...project.toObject(),
+                    progress: calculatedProgress // Override with calculated value
+                },
                 userRole,
                 permissions: { canEdit, canView: true }
             }
@@ -208,6 +239,10 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
         }
 
         await project.save();
+
+        // Populate owner and members after save
+        await project.populate('owner', 'name email avatar');
+        await project.populate('members.user', 'name email avatar');
 
         res.status(200).json({
             success: true,

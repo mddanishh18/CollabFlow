@@ -128,7 +128,14 @@ export const registerChatHandlers = (
                 return;
             }
 
+            // Broadcast new message to others
             socket.to(`channel:${data.channelId}`).emit("message:new", data.message);
+            
+            // Notify channel members about unread message (increment unread count)
+            socket.to(`channel:${data.channelId}`).emit("unread:increment", {
+                channelId: data.channelId,
+                messageId: data.message._id
+            });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to send message";
             console.error(`[chatHandlers] Error broadcasting message:`, error);
@@ -233,26 +240,67 @@ export const registerChatHandlers = (
         }
     });
 
-    // Read receipts with validation
-    socket.on("message:read", (data: { channelId: string; messageIds: string[] }) => {
+    // Read receipts with validation and database update
+    socket.on("message:read", async (data: { channelId: string; messageIds: string[] }, callback?: (response: { success: boolean; error?: string }) => void) => {
         try {
             // Input validation
             if (!data || !data.channelId || !Array.isArray(data.messageIds)) {
                 const error = "Invalid read receipt data";
                 console.error(`[chatHandlers] ${error}`);
                 socket.emit("error", { event: "message:read", message: error });
+                if (callback) callback({ success: false, error });
                 return;
             }
 
+            if (!isValidObjectId(data.channelId)) {
+                const error = "Invalid channel ID format";
+                console.error(`[chatHandlers] ${error}`);
+                socket.emit("error", { event: "message:read", message: error });
+                if (callback) callback({ success: false, error });
+                return;
+            }
+
+            // Validate all message IDs
+            const invalidIds = data.messageIds.filter(id => !isValidObjectId(id));
+            if (invalidIds.length > 0) {
+                const error = `Invalid message ID format: ${invalidIds.join(', ')}`;
+                console.error(`[chatHandlers] ${error}`);
+                socket.emit("error", { event: "message:read", message: error });
+                if (callback) callback({ success: false, error });
+                return;
+            }
+
+            // Update read receipts in database
+            const Message = (await import('../models/Message.js')).default;
+            const userId = new Types.ObjectId(socket.userId);
+
+            await Promise.all(
+                data.messageIds.map(async (messageId) => {
+                    const message = await Message.findById(messageId);
+                    if (message && message.channel.toString() === data.channelId) {
+                        await message.markAsRead(userId);
+                    }
+                })
+            );
+
+            // Broadcast to other users in the channel with full user info
             socket.to(`channel:${data.channelId}`).emit("message:seen", {
                 userId: socket.userId,
-                user: socket.user,
-                messageIds: data.messageIds
+                user: {
+                    _id: socket.userId,
+                    name: socket.user?.name || 'Unknown',
+                    email: socket.user?.email
+                },
+                messageIds: data.messageIds,
+                readAt: new Date()
             });
+
+            if (callback) callback({ success: true });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to mark messages as read";
             console.error(`[chatHandlers] Error handling read receipts:`, error);
             socket.emit("error", { event: "message:read", message: errorMessage });
+            if (callback) callback({ success: false, error: errorMessage });
         }
     });
 };

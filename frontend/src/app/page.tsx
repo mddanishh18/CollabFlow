@@ -15,7 +15,8 @@ export default function Home() {
             if (isAuthenticated) {
                 router.push("/workspace")
             } else {
-                router.push("/login")
+                // Show landing page for non-authenticated users
+                router.push("/landing")
             }
         }
     }, [isAuthenticated, _hasHydrated, router])

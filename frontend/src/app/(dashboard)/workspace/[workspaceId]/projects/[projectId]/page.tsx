@@ -62,6 +62,12 @@ export default function ProjectDetailPage() {
     // Robust user ID check to handle potential persisted state mismatches
     const currentUserId = user?._id || (user as any)?.id;
 
+    // Calculate completion percentage from tasks
+    const completedTasksCount = projectTasks.filter(task => task.status === 'done').length;
+    const completionPercentage = projectTasks.length > 0
+        ? Math.round((completedTasksCount / projectTasks.length) * 100)
+        : 0;
+
     const [membersDialogOpen, setMembersDialogOpen] = useState(false)
     const [addMembersDialogOpen, setAddMembersDialogOpen] = useState(false)
     const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false)
@@ -123,19 +129,6 @@ export default function ProjectDetailPage() {
     const canManageMembers = isProjectOwner || isWorkspaceAdmin; // Project owner or workspace admin can manage members
     const canCreateTasks = isProjectOwner || isEditor; // Only project owner or editor can create tasks (must be project member)
     const canDeleteTasks = isProjectOwner || isWorkspaceAdmin; // Project owner or workspace admin can delete tasks (for oversight)
-    
-    // Debug logging
-    console.log('[ProjectDetailPage] Permissions:', {
-        userId: currentUserId,
-        projectRole,
-        workspaceRole,
-        isProjectOwner,
-        isWorkspaceAdmin,
-        isEditor,
-        canCreateTasks,
-        canDeleteTasks,
-        canManageMembers
-    });
 
     // Error state
     if (error) {
@@ -203,21 +196,21 @@ export default function ProjectDetailPage() {
                         </div>
                     </div>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {canManageMembers && (
+                {canManageMembers && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => router.push(`/workspace/${workspaceId}/projects/${projectId}/settings`)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 Settings
                             </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
 
             {/* Description */}
@@ -233,12 +226,12 @@ export default function ProjectDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                                <ListTodo className="h-5 w-5 text-blue-500" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                                <ListTodo className="h-6 w-6 text-blue-500" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">{projectTasks.length}</p>
+                            <div className="flex flex-col justify-center">
+                                <p className="text-2xl font-bold leading-none mb-1">{projectTasks.length}</p>
                                 <p className="text-xs text-muted-foreground">Total Tasks</p>
                             </div>
                         </div>
@@ -247,12 +240,12 @@ export default function ProjectDetailPage() {
 
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="h-6 w-6 text-green-500" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">{currentProject.progress || 0}%</p>
+                            <div className="flex flex-col justify-center">
+                                <p className="text-2xl font-bold leading-none mb-1">{completionPercentage}%</p>
                                 <p className="text-xs text-muted-foreground">Completed</p>
                             </div>
                         </div>
@@ -261,12 +254,12 @@ export default function ProjectDetailPage() {
 
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                <Users className="h-5 w-5 text-purple-500" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                                <Users className="h-6 w-6 text-purple-500" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">{currentProject.members?.length || 1}</p>
+                            <div className="flex flex-col justify-center">
+                                <p className="text-2xl font-bold leading-none mb-1">{currentProject.members?.length || 1}</p>
                                 <p className="text-xs text-muted-foreground">Members</p>
                             </div>
                         </div>
@@ -275,12 +268,12 @@ export default function ProjectDetailPage() {
 
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-orange-500" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                                <Clock className="h-6 w-6 text-orange-500" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">
+                            <div className="flex flex-col justify-center">
+                                <p className="text-2xl font-bold leading-none mb-1">
                                     {currentProject.dueDate
                                         ? new Date(currentProject.dueDate).toLocaleDateString("en-US", {
                                             month: "short",
@@ -470,15 +463,23 @@ export default function ProjectDetailPage() {
                                 <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
                                     <Avatar className="h-9 w-9">
                                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                                            {getInitials(typeof currentProject.owner === 'string' ? '' : currentProject.owner?.name)}
+                                            {getInitials(
+                                                typeof currentProject.owner === 'string'
+                                                    ? 'Owner'
+                                                    : currentProject.owner?.name || 'Owner'
+                                            )}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate">
-                                            {typeof currentProject.owner === 'string' ? "Owner" : currentProject.owner?.name || "Owner"}
+                                            {typeof currentProject.owner === 'string'
+                                                ? "Owner"
+                                                : currentProject.owner?.name || "Owner"}
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
-                                            {typeof currentProject.owner === 'string' ? "" : currentProject.owner?.email}
+                                            {typeof currentProject.owner === 'string'
+                                                ? ""
+                                                : currentProject.owner?.email || ""}
                                         </p>
                                     </div>
                                     <Badge variant="secondary" className="text-xs">
@@ -502,12 +503,12 @@ export default function ProjectDetailPage() {
                                         >
                                             <Avatar className="h-9 w-9">
                                                 <AvatarFallback className="bg-muted text-muted-foreground text-sm">
-                                                    {getInitials(member.user?.name)}
+                                                    {getInitials(member.user?.name || 'Member')}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{member.user?.name || "Member"}</p>
-                                                <p className="text-xs text-muted-foreground truncate">{member.user?.email}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{member.user?.email || ""}</p>
                                             </div>
                                             <Badge variant="outline" className="text-xs">
                                                 {member.role || "member"}

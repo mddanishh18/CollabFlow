@@ -32,7 +32,6 @@ export const getProjectTasks = async (req: AuthenticatedRequest, res: Response):
         });
 
     } catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -76,7 +75,6 @@ export const getTask = async (req: AuthenticatedRequest, res: Response): Promise
         });
 
     } catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -131,6 +129,9 @@ export const createTask = async (req: AuthenticatedRequest, res: Response): Prom
             .populate('assignee', 'name email avatar')
             .populate('createdBy', 'name email');
 
+        // Update project progress
+        await project.updateProgress();
+
         // Broadcast task creation to all users in project room
         const io = req.app.get('io');
         if (io) {
@@ -147,7 +148,6 @@ export const createTask = async (req: AuthenticatedRequest, res: Response): Prom
         });
 
     } catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -185,6 +185,16 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
             return;
         }
 
+        // Check permission: Only owner and editor can update tasks
+        const userRole = project.getMemberRole(userId);
+        if (userRole !== 'owner' && userRole !== 'editor') {
+            res.status(403).json({
+                success: false,
+                message: "Only project owners and editors can update tasks"
+            });
+            return;
+        }
+
         if (updates.title !== undefined) task.title = updates.title.trim();
         if (updates.description !== undefined) task.description = updates.description;
         if (updates.status !== undefined) task.status = updates.status;
@@ -199,6 +209,11 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
         const updatedTask = await Task.findById(taskId)
             .populate('assignee', 'name email avatar')
             .populate('createdBy', 'name email');
+
+        // Update project progress if status was changed
+        if (updates.status !== undefined) {
+            await project.updateProgress();
+        }
 
         // Broadcast task update to all users in project room
         const io = req.app.get('io');
@@ -216,7 +231,6 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
             data: updatedTask
         });
     } catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -255,11 +269,11 @@ export const deleteTask = async (req: AuthenticatedRequest, res: Response): Prom
 
         // Check if user is project owner
         const isProjectOwner = project.owner.toString() === userId.toString();
-        
+
         // Check if user is workspace admin/owner
         const workspace = project.workspace as any;
         const isWorkspaceOwner = workspace && workspace.owner && workspace.owner.toString() === userId.toString();
-        const workspaceMember = workspace?.members?.find((m: any) => 
+        const workspaceMember = workspace?.members?.find((m: any) =>
             (typeof m.user === 'string' ? m.user : m.user._id).toString() === userId.toString()
         );
         const isWorkspaceAdmin = workspaceMember && (workspaceMember.role === 'admin' || workspaceMember.role === 'owner');
@@ -277,6 +291,9 @@ export const deleteTask = async (req: AuthenticatedRequest, res: Response): Prom
 
         await Task.findByIdAndDelete(taskId);
 
+        // Update project progress after deletion
+        await project.updateProgress();
+
         // Broadcast task deletion to all users in project room
         const io = req.app.get('io');
         if (io) {
@@ -292,7 +309,6 @@ export const deleteTask = async (req: AuthenticatedRequest, res: Response): Prom
         });
 
     } catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Internal server error"

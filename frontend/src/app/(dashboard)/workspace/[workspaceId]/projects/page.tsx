@@ -50,6 +50,13 @@ import {
     Users,
     Calendar,
     UserPlus,
+    Info,
+    Bot,
+    Sparkles,
+    MessageSquare,
+    Database,
+    Shield,
+    Zap,
 } from "lucide-react"
 import { AddProjectMembersDialog } from "@/components/project/add-project-members-dialog"
 
@@ -85,6 +92,7 @@ export default function ProjectsPage() {
     const [saving, setSaving] = useState(false)
     const [membersDialogOpen, setMembersDialogOpen] = useState(false)
     const [selectedProjectForMembers, setSelectedProjectForMembers] = useState<any>(null)
+    const [aiPreviewOpen, setAiPreviewOpen] = useState(false)
 
     const [formData, setFormData] = useState<FormData>({
         name: "",
@@ -307,18 +315,29 @@ export default function ProjectsPage() {
                         Manage your workspace projects ({workspaceProjects?.length || 0} total)
                     </p>
                 </div>
-                {(currentWorkspace?.userRole === 'owner' || currentWorkspace?.userRole === 'admin') && (
+                <div className="flex gap-2">
                     <Button
-                        onClick={() => {
-                            resetForm()
-                            setCreateDialogOpen(true)
-                        }}
-                        className="w-full sm:w-auto"
+                        onClick={() => setAiPreviewOpen(true)}
+                        variant="outline"
+                        className="w-full sm:w-auto border-primary/30 hover:bg-primary/10 hover:border-primary/50"
                     >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Project
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Assistant
+                        <Badge variant="secondary" className="ml-2 text-xs">Soon</Badge>
                     </Button>
-                )}
+                    {(currentWorkspace?.userRole === 'owner' || currentWorkspace?.userRole === 'admin') && (
+                        <Button
+                            onClick={() => {
+                                resetForm()
+                                setCreateDialogOpen(true)
+                            }}
+                            className="w-full sm:w-auto"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Project
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Search */}
@@ -338,10 +357,14 @@ export default function ProjectsPage() {
                     <CardContent className="flex flex-col items-center justify-center py-12">
                         <FolderKanban className="h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium mb-2">
-                            {searchQuery ? "No projects found" : "No projects yet"}
+                            {searchQuery ? "No projects found" : "No projects visible"}
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-4 text-center">
-                            {searchQuery ? "Try a different search term" : "Create your first project to get started"}
+                        <p className="text-sm text-muted-foreground mb-4 text-center max-w-sm">
+                            {searchQuery
+                                ? "Try a different search term"
+                                : (currentWorkspace?.userRole === 'owner' || currentWorkspace?.userRole === 'admin')
+                                    ? "Create your first project to get started"
+                                    : "You haven't been added to any projects yet. Ask an admin to invite you or create one for you."}
                         </p>
                         {!searchQuery && (currentWorkspace?.userRole === 'owner' || currentWorkspace?.userRole === 'admin') && (
                             <Button
@@ -357,20 +380,22 @@ export default function ProjectsPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProjects.map((project: any) => (
                         <Card
                             key={project._id}
-                            className="hover:border-primary/50 hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                            className="elevated group cursor-pointer overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm"
                             onClick={() => router.push(`/workspace/${workspaceId}/projects/${project._id}`)}
                         >
-                            <CardHeader className="pb-2">
+                            <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                                            <FolderKanban className="h-4 w-4 text-primary" />
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                            <FolderKanban className="h-5 w-5 text-primary" />
                                         </div>
-                                        <CardTitle className="text-base font-medium truncate">{project.name}</CardTitle>
+                                        <div>
+                                            <CardTitle className="text-base font-semibold truncate">{project.name}</CardTitle>
+                                        </div>
                                     </div>
                                     {(project.userRole === 'owner' || project.userRole === 'editor') && (
                                         <DropdownMenu>
@@ -378,20 +403,20 @@ export default function ProjectsPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-primary/10 rounded-lg"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleEdit(project)}>
+                                            <DropdownMenuContent align="end" className="glass-card">
+                                                <DropdownMenuItem onClick={() => handleEdit(project)} className="cursor-pointer">
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
                                                 {project.userRole === 'owner' && (
                                                     <DropdownMenuItem
-                                                        className="text-destructive"
+                                                        className="text-destructive cursor-pointer"
                                                         onClick={() => handleDelete(project._id, project.name)}
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
@@ -403,17 +428,17 @@ export default function ProjectsPage() {
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                            <CardContent className="space-y-3">
+                                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
                                     {project.description || "No description"}
                                 </p>
-                                <div className="flex items-center justify-between">
-                                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                                    <Badge variant="outline" className="text-xs flex items-center gap-1.5 rounded-lg">
                                         {getVisibilityIcon(project.visibility)}
                                         {project.visibility || "workspace"}
                                     </Badge>
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                        <Calendar className="h-3.5 w-3.5" />
                                         {new Date(project.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
@@ -432,6 +457,19 @@ export default function ProjectsPage() {
                             Add a new project to {currentWorkspace?.name || "this workspace"}
                         </DialogDescription>
                     </DialogHeader>
+
+                    <Alert className="mb-4">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                            <strong>Creating a project in {currentWorkspace?.name || "this workspace"}</strong>
+                            <ul className="mt-2 ml-4 list-disc space-y-1 text-muted-foreground">
+                                <li>You'll be the project owner with full control</li>
+                                <li><strong>Private:</strong> Only you and invited members can access</li>
+                                <li><strong>Workspace:</strong> All workspace members can view (but not edit)</li>
+                                <li>You can add editors and viewers after creation</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
 
                     <form onSubmit={handleCreate}>
                         <div className="grid gap-4 py-4">
@@ -473,19 +511,13 @@ export default function ProjectsPage() {
                                         <SelectItem value="private">
                                             <div className="flex items-center gap-2">
                                                 <Lock className="h-4 w-4" />
-                                                Private - Only assigned members
+                                                Private - Only project members
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="workspace">
                                             <div className="flex items-center gap-2">
                                                 <Users className="h-4 w-4" />
                                                 Workspace - All workspace members
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="public">
-                                            <div className="flex items-center gap-2">
-                                                <Globe className="h-4 w-4" />
-                                                Public - Anyone can view
                                             </div>
                                         </SelectItem>
                                     </SelectContent>
@@ -563,9 +595,8 @@ export default function ProjectsPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="private">Private</SelectItem>
-                                        <SelectItem value="workspace">Workspace</SelectItem>
-                                        <SelectItem value="public">Public</SelectItem>
+                                        <SelectItem value="private">Private - Only project members</SelectItem>
+                                        <SelectItem value="workspace">Workspace - All workspace members</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -607,6 +638,100 @@ export default function ProjectsPage() {
                 existingMembers={selectedProjectForMembers?.members || []}
                 onSuccess={() => fetchWorkspaceProjects(workspaceId)}
             />
+
+            {/* AI Preview Dialog */}
+            <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                                <Bot className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl">AI Project Assistant</DialogTitle>
+                                <DialogDescription>Coming Soon</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="space-y-6 py-4">
+                        {/* Hero Message */}
+                        <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+                            <p className="text-sm leading-relaxed">
+                                <Sparkles className="inline h-4 w-4 text-primary mr-1" />
+                                Each project will get its own intelligent AI assistant with dedicated knowledge base.
+                                Ask questions, get insights, and boost productivity.
+                            </p>
+                        </div>
+
+                        {/* Features List */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-primary" />
+                                What You'll Get:
+                            </h4>
+                            
+                            <div className="space-y-3">
+                                <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+                                    <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium">Dedicated AI Per Project</p>
+                                        <p className="text-xs text-muted-foreground">Each project gets its own AI assistant that understands your specific context</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+                                    <Database className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium">Separate Knowledge Bases</p>
+                                        <p className="text-xs text-muted-foreground">Isolated knowledge per project - AI only knows what's relevant to that project</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+                                    <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium">Admin Controlled</p>
+                                        <p className="text-xs text-muted-foreground">Project admins decide what the AI learns - tasks, files, docs, and more</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+                                    <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium">Real-Time Responses</p>
+                                        <p className="text-xs text-muted-foreground">Get instant answers about project tasks, status, and context through chat</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Use Cases */}
+                        <div className="p-4 border rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold">Example Questions You Can Ask:</h4>
+                            <div className="space-y-1.5 text-xs text-muted-foreground">
+                                <p>• "What tasks are overdue in this project?"</p>
+                                <p>• "Summarize recent activity and progress"</p>
+                                <p>• "Who's working on the authentication feature?"</p>
+                                <p>• "What's blocking us from completing sprint 3?"</p>
+                            </div>
+                        </div>
+
+                        {/* Launch Badge */}
+                        <div className="flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-lg">
+                            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                            <span className="text-sm font-medium">Launching Soon</span>
+                            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button onClick={() => setAiPreviewOpen(false)} className="w-full">
+                            Got it, can't wait!
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
