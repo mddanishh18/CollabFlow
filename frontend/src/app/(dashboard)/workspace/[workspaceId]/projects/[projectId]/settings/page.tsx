@@ -177,7 +177,7 @@ export default function ProjectSettingsPage() {
                             <Label htmlFor="status">Status</Label>
                             <Select
                                 value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value })}
+                                onValueChange={(value) => setFormData({ ...formData, status: value as "planning" | "active" | "on-hold" | "completed" })}
                             >
                                 <SelectTrigger id="status">
                                     <SelectValue />
