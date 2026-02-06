@@ -230,7 +230,7 @@ export default function MembersPage() {
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pl-12 md:pl-0">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Team Members</h1>
                     <p className="text-sm md:text-base text-muted-foreground">
@@ -378,7 +378,7 @@ export default function MembersPage() {
                             </div>
                         </div>
 
-                        <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
                             <Button
                                 type="button"
                                 variant="outline"

@@ -141,7 +141,7 @@ export default function WorkspaceOverviewPage() {
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {/* Header */}
-            <div className="mb-6 md:mb-8">
+            <div className="mb-6 md:mb-8 pl-12 md:pl-0">
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     {currentWorkspace?.name || "Workspace"}
                 </h1>

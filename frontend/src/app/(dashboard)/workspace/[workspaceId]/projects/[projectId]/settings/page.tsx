@@ -131,7 +131,7 @@ export default function ProjectSettingsPage() {
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-6 pl-12 md:pl-0">
                 <Button
                     variant="ghost"
                     size="icon"

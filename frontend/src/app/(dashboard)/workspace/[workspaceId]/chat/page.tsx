@@ -20,7 +20,7 @@ export default function ChatPage() {
     // Fetch channels ONCE when workspaceId is available
     useEffect(() => {
         if (!workspaceId || hasFetched.current) return;
-        
+
         hasFetched.current = true;
         fetchChannels(workspaceId).catch(err => {
             console.error('Failed to fetch channels:', err);
@@ -65,7 +65,7 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="flex h-screen w-full overflow-hidden">
+        <div className="flex h-full w-full overflow-hidden">
             {/* Channel Sidebar - Desktop always visible, Mobile only when no channel selected */}
             <div className={cn(
                 "w-full lg:w-64 lg:border-r h-full overflow-y-auto",

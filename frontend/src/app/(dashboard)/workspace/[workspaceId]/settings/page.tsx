@@ -211,7 +211,7 @@ export default function SettingsPage() {
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
-                <div className="mb-6">
+                <div className="mb-6 pl-12 md:pl-0">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Settings className="h-6 w-6 md:h-8 md:w-8" />
                         Workspace Settings

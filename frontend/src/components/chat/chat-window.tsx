@@ -165,7 +165,7 @@ export function ChatWindow() {
     };
 
     return (
-        <div className="flex flex-col h-dvh">
+        <div className="flex flex-col h-full">
             {/* Channel Header */}
             <div className="flex-none border-b bg-background px-6 py-4">
                 <div className="flex items-center justify-between">

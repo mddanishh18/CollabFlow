@@ -166,7 +166,7 @@ export function CreateWorkspaceDialog({ open, onClose }: CreateWorkspaceDialogPr
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
                         <Button
                             type="button"
                             variant="outline"

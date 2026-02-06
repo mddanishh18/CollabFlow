@@ -308,7 +308,7 @@ export default function ProjectsPage() {
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pl-12 md:pl-0">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Projects</h1>
                     <p className="text-sm md:text-base text-muted-foreground">
@@ -380,7 +380,7 @@ export default function ProjectsPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {filteredProjects.map((project: any) => (
                         <Card
                             key={project._id}
@@ -525,7 +525,7 @@ export default function ProjectsPage() {
                             </div>
                         </div>
 
-                        <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -602,7 +602,7 @@ export default function ProjectsPage() {
                             </div>
                         </div>
 
-                        <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -670,7 +670,7 @@ export default function ProjectsPage() {
                                 <Zap className="h-4 w-4 text-primary" />
                                 What You'll Get:
                             </h4>
-                            
+
                             <div className="space-y-3">
                                 <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
                                     <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />

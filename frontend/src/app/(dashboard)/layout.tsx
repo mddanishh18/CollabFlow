@@ -5,6 +5,7 @@ import { useRouter, useParams, usePathname } from "next/navigation"
 import { useAuthStore } from "@/store/auth-store"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { Sidebar } from "@/components/workspace/sidebar"
+import { MobileNav } from "@/components/workspace/mobile-nav"
 import { PageTransition } from "@/components/ui/page-transition"
 import { NavigationProgress } from "@/hooks/use-page-transition"
 import { Loader2 } from "lucide-react"
@@ -67,12 +68,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         return null
     }
 
+
     return (
         <div className="flex h-screen overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
             {/* Top progress bar for route changes */}
             <NavigationProgress isNavigating={isNavigating} />
-            
-            {/* Mobile: Hidden sidebar, Desktop: Visible */}
+
+            {/* Mobile navigation - visible only on mobile */}
+            <MobileNav />
+
+            {/* Desktop sidebar - hidden on mobile */}
             <div className="hidden md:flex">
                 <Sidebar />
             </div>

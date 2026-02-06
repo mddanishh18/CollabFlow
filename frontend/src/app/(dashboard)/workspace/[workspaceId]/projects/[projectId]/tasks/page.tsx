@@ -21,7 +21,7 @@ export default function TasksPage() {
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pl-12 md:pl-0">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
                         <ListTodo className="h-7 w-7" />
