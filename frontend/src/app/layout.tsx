@@ -3,6 +3,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { ConnectionStatus } from "@/components/realtime/connection-status"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ReactNode } from "react"
 
 const geistSans = Geist({
@@ -40,6 +42,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     <ConnectionStatus />
                     {children}
                     <Toaster />
+                    <Analytics />
+                    <SpeedInsights />
                 </ThemeProvider>
             </body>
         </html>
