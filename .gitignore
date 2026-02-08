@@ -34,3 +34,9 @@ Thumbs.db
 
 # Production Credentials (NEVER COMMIT)
 PRODUCTION_CREDENTIALS.md
+
+# Documentation and temporary files (keep only backend and frontend)
+*.md
+!README.md
+z-documents/
+verify-chat-fixes.js
