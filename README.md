@@ -381,12 +381,6 @@ CollabFlow/
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License.
@@ -397,8 +391,6 @@ This project is licensed under the MIT License.
 
 **Danish**
 - GitHub: [@mddanishh18](https://github.com/mddanishh18)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
-- Portfolio: [Your Portfolio](https://yourportfolio.com)
 
 ---
 
