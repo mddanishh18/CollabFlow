@@ -62,7 +62,7 @@ export const getUserWorkspaces = async (req: AuthenticatedRequest, res: Response
                 userRole
             };
         });
-
+        
         res.status(200).json({
             success: true,
             message: 'Workspaces fetched successfully',

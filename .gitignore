@@ -38,5 +38,27 @@ PRODUCTION_CREDENTIALS.md
 # Documentation and temporary files (keep only backend and frontend)
 *.md
 !README.md
+!CLAUDE.md
+!frontend/CLAUDE.md
+!.claude/**/*.md
 z-documents/
 verify-chat-fixes.js
+
+# Claude Code / AI tool settings — fully ignored
+.agent/
+.agents/
+.claude/
+.mcp.json
+
+# Browser automation logs (Playwright MCP)
+.playwright-mcp/
+
+# Auto-generated large context dump (not needed in repo)
+project_context.md
+
+# Utility/helper scripts (local dev only)
+_generate_claude_dump.ps1
+generate_doc.py
+
+# Agent skills lock file (machine-specific)
+skills-lock.json

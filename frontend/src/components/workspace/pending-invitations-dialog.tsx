@@ -12,14 +12,27 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Loader2, Mail, UserPlus, Clock, Check, X } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+import { type WorkspaceInvitation, type User } from "@/types"
+import { Loader2, Mail, UserPlus, Clock, Check, Building2, Shield, User as UserIcon } from "lucide-react"
 
 interface PendingInvitationsDialogProps {
     open: boolean
     onClose: () => void
+}
+
+function getExpiryInfo(expiresAt: Date): { label: string; urgent: boolean } {
+    const date = new Date(expiresAt)
+    const now = new Date()
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays <= 0) return { label: "Expired", urgent: true }
+    if (diffDays === 1) return { label: "Expires tomorrow", urgent: true }
+    if (diffDays <= 3) return { label: `Expires in ${diffDays} days`, urgent: true }
+    return { label: `Expires in ${diffDays} days`, urgent: false }
 }
 
 export function PendingInvitationsDialog({ open, onClose }: PendingInvitationsDialogProps) {
@@ -36,19 +49,17 @@ export function PendingInvitationsDialog({ open, onClose }: PendingInvitationsDi
         }
     }, [open, fetchPendingInvitations])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleAccept = async (invitation: any) => {
+    const handleAccept = async (invitation: WorkspaceInvitation) => {
         setProcessingId(invitation.token)
         try {
             await acceptInvitation(invitation.token)
+            const ws = typeof invitation.workspace === "string" ? null : invitation.workspace
             toast({
-                title: "Invitation accepted! 🎉",
-                description: `You've joined ${invitation.workspace?.name}`,
+                title: "Invitation accepted",
+                description: `You've joined ${ws?.name ?? "the workspace"}`,
             })
-            // Refresh invitations list
             await fetchPendingInvitations()
-            // Navigate to the workspace
-            router.push(`/workspace/${invitation.workspace?._id}`)
+            router.push(`/workspace/${ws?._id}`)
             onClose()
         } catch (error) {
             toast({
@@ -61,21 +72,21 @@ export function PendingInvitationsDialog({ open, onClose }: PendingInvitationsDi
         }
     }
 
-    const formatDate = (dateString: string): string => {
-        const date = new Date(dateString)
-        const now = new Date()
-        const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        if (diffDays <= 0) return "Expired"
-        if (diffDays === 1) return "Expires tomorrow"
-        return `Expires in ${diffDays} days`
-    }
+    const RoleIcon = ({ role }: { role: string }) =>
+        role === "admin" ? (
+            <Shield className="h-3 w-3" />
+        ) : (
+            <UserIcon className="h-3 w-3" />
+        )
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Mail className="h-5 w-5 text-primary" />
+                    <DialogTitle className="flex items-center gap-2.5 text-base">
+                        <div className="p-1.5 rounded-md bg-primary/10">
+                            <Mail className="h-4 w-4 text-primary" />
+                        </div>
                         Pending Invitations
                     </DialogTitle>
                     <DialogDescription>
@@ -83,70 +94,104 @@ export function PendingInvitationsDialog({ open, onClose }: PendingInvitationsDi
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-3 py-4">
+                <div className="py-2">
                     {loading ? (
-                        // Loading state
                         <div className="space-y-3">
                             {[1, 2].map((i) => (
-                                <Skeleton key={i} className="h-24 w-full" />
+                                <Skeleton key={i} className="h-28 w-full rounded-xl" />
                             ))}
                         </div>
                     ) : invitations.length === 0 ? (
-                        // Empty state
-                        <div className="text-center py-8">
-                            <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-medium mb-2">No pending invitations</h3>
-                            <p className="text-sm text-muted-foreground">
-                                You'll see invitations here when someone invites you to a workspace
+                        <div className="text-center py-10">
+                            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                                <UserPlus className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <p className="text-sm font-medium">No pending invitations</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Invitations will appear here when someone adds you to a workspace
                             </p>
                         </div>
                     ) : (
-                        // Invitations list
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        invitations.map((invitation: any) => (
-                            <Card
-                                key={invitation.token}
-                                className="hover:border-primary/50 transition-all duration-300"
-                            >
-                                <CardContent className="p-4">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-medium text-base truncate">
-                                                {invitation.workspace?.name || "Unknown Workspace"}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                Invited by {invitation.invitedBy?.name || invitation.invitedBy?.email || "Unknown"}
-                                            </p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Badge variant="secondary" className="text-xs">
+                        <div className="space-y-3">
+                            {(invitations as WorkspaceInvitation[]).map((invitation, index) => {
+                                const expiry = getExpiryInfo(invitation.expiresAt)
+                                const isProcessing = processingId === invitation.token
+                                const ws = typeof invitation.workspace === "string" ? null : invitation.workspace
+                                const inviter = typeof invitation.invitedBy === "string" ? null : (invitation.invitedBy as User | null)
+
+                                return (
+                                    <div key={invitation.token}>
+                                        {index > 0 && <Separator className="mb-3" />}
+                                        <div className="rounded-xl border border-border/70 bg-card p-4 space-y-3 hover:border-primary/40 transition-colors duration-200">
+                                            {/* Workspace identity */}
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <Building2 className="h-4 w-4 text-primary" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-sm leading-tight truncate">
+                                                        {ws?.name || "Unknown Workspace"}
+                                                    </p>
+                                                    {ws?.description && (
+                                                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                                            {ws.description}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Invited by{" "}
+                                                        <span className="text-foreground font-medium">
+                                                            {inviter?.name || inviter?.email || "Unknown"}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Role + expiry metadata */}
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-xs flex items-center gap-1"
+                                                >
+                                                    <RoleIcon role={invitation.role} />
                                                     {invitation.role}
                                                 </Badge>
-                                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <span
+                                                    className={cn(
+                                                        "text-xs flex items-center gap-1",
+                                                        expiry.urgent
+                                                            ? "text-amber-600 dark:text-amber-400 font-medium"
+                                                            : "text-muted-foreground"
+                                                    )}
+                                                >
                                                     <Clock className="h-3 w-3" />
-                                                    {formatDate(invitation.expiresAt)}
+                                                    {expiry.label}
                                                 </span>
                                             </div>
-                                        </div>
-                                        <div className="flex gap-2">
+
+                                            {/* Action */}
                                             <Button
                                                 size="sm"
+                                                className="w-full"
                                                 onClick={() => handleAccept(invitation)}
-                                                disabled={processingId === invitation.token}
+                                                disabled={isProcessing || processingId !== null}
                                             >
-                                                {processingId === invitation.token ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                {isProcessing ? (
+                                                    <>
+                                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                                        Joining…
+                                                    </>
                                                 ) : (
                                                     <>
-                                                        <Check className="h-4 w-4 mr-1" />
-                                                        Accept
+                                                        <Check className="h-3.5 w-3.5 mr-2" />
+                                                        Accept & join workspace
                                                     </>
                                                 )}
                                             </Button>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))
+                                )
+                            })}
+                        </div>
                     )}
                 </div>
             </DialogContent>

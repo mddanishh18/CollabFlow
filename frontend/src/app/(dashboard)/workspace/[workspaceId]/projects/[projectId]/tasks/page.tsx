@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useTasks } from "@/hooks/use-task";
+import type { Task } from "@/types";
 import { TaskList } from "@/components/task/task-list";
 import { CreateTaskDialog } from "@/components/task/create-task-dialog";
+import { TaskDetailDialog } from "@/components/task/task-detail-dialog";
 import { UserPresence } from "@/components/realtime/user-presence";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +15,22 @@ import { Plus, ListTodo } from "lucide-react";
 export default function TasksPage() {
     const params = useParams();
     const projectId = params?.projectId as string;
-    const workspaceId = params?.workspaceId as string;
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+
     const { projectTasks, loading } = useTasks(projectId);
+
+    const handleTaskClick = (task: Task) => {
+        setSelectedTask(task);
+        setDetailOpen(true);
+    };
+
+    const handleDetailClose = () => {
+        setDetailOpen(false);
+        setSelectedTask(null);
+    };
 
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
@@ -52,6 +66,7 @@ export default function TasksPage() {
                     <TaskList
                         tasks={projectTasks}
                         loading={loading}
+                        onTaskClick={handleTaskClick}
                     />
                 </CardContent>
             </Card>
@@ -64,6 +79,15 @@ export default function TasksPage() {
                     setCreateDialogOpen(false);
                 }}
                 projectId={projectId}
+            />
+
+            {/* Detail Dialog */}
+            <TaskDetailDialog
+                task={selectedTask}
+                open={detailOpen}
+                onClose={handleDetailClose}
+                projectId={projectId}
+                canEditStatus={true}
             />
         </div>
     );

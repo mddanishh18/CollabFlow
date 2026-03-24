@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useProjects } from "@/hooks/use-projects"
 import { useToast } from "@/hooks/use-toast"
+import { useWorkspacePresence } from "@/hooks/use-workspace-presence"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuthStore } from "@/store/auth-store"
+import { type WorkspaceMember } from "@/types"
+import { motion, useReducedMotion } from "framer-motion"
+import { cn } from "@/lib/utils"
 import {
     FolderKanban,
     Users,
@@ -19,8 +23,6 @@ import {
     Plus,
     AlertCircle,
     RefreshCw,
-    Activity,
-    Clock,
     ArrowRight,
 } from "lucide-react"
 import Link from "next/link"
@@ -29,6 +31,7 @@ export default function WorkspaceOverviewPage() {
     const params = useParams()
     const workspaceId = params?.workspaceId as string
     const { toast } = useToast()
+    const prefersReducedMotion = useReducedMotion()
 
     const {
         currentWorkspace,
@@ -44,8 +47,8 @@ export default function WorkspaceOverviewPage() {
         error: projectsError,
     } = useProjects()
 
-    // Import user to check role
     const { user } = useAuthStore()
+    const { onlineUsers, isUserOnline } = useWorkspacePresence(workspaceId)
 
     useEffect(() => {
         if (workspaceId) {
@@ -74,7 +77,6 @@ export default function WorkspaceOverviewPage() {
     const loading = workspaceLoading || projectsLoading
     const error = workspaceError || projectsError
 
-    // Error state
     if (error && !loading) {
         return (
             <div className="flex-1 p-4 md:p-6 lg:p-8">
@@ -91,7 +93,6 @@ export default function WorkspaceOverviewPage() {
                             <AlertCircle className="h-4 w-4" />
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
-
                         <Button onClick={handleRetry} className="w-full" size="lg">
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Retry
@@ -102,25 +103,21 @@ export default function WorkspaceOverviewPage() {
         )
     }
 
-    // Loading state
     if (loading) {
         return (
             <div className="flex-1 p-4 md:p-6 lg:p-8">
                 <div className="space-y-6">
-                    {/* Header Skeleton */}
                     <div className="space-y-2">
+                        <Skeleton className="h-6 w-40" />
                         <Skeleton className="h-8 w-64" />
                         <Skeleton className="h-4 w-96" />
                     </div>
-
-                    {/* Stats Cards Skeleton */}
+                    <Skeleton className="h-12 w-full max-w-sm" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         {[1, 2, 3].map((i) => (
                             <Skeleton key={i} className="h-32" />
                         ))}
                     </div>
-
-                    {/* Recent Projects Skeleton */}
                     <Skeleton className="h-64 w-full" />
                 </div>
             </div>
@@ -130,77 +127,151 @@ export default function WorkspaceOverviewPage() {
     const members = currentWorkspace?.members || []
     const recentProjects = projects?.slice(0, 5) || []
 
-    const currentUserId = user?._id || (user as any)?.id;
-    const workspaceMember = members.find((m: any) => {
-        const mUserId = typeof m.user === 'string' ? m.user : m.user?._id;
-        return mUserId === currentUserId;
-    });
-    const workspaceRole = workspaceMember?.role;
-    const isAdmin = workspaceRole === 'owner' || workspaceRole === 'admin';
+    const currentUserId = user?._id || (user as { id?: string })?.id
+    const workspaceMember = members.find((m: WorkspaceMember) => {
+        const mUserId = typeof m.user === "string" ? m.user : m.user?._id
+        return mUserId === currentUserId
+    })
+    const workspaceRole = workspaceMember?.role
+    const isAdmin = workspaceRole === "owner" || workspaceRole === "admin"
+
+    // Exclude self from presence strip — you know you're here
+    const otherOnlineUsers = onlineUsers.filter((u) => u._id !== currentUserId)
+
+    const firstName = user?.name?.split(" ")[0] ?? "there"
+
+    const fadeUp = {
+        initial: prefersReducedMotion ? false : { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+    }
 
     return (
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-            {/* Header */}
-            <div className="mb-6 md:mb-8 pl-12 md:pl-0">
+            {/* Header — greeting + workspace name */}
+            <motion.div
+                {...fadeUp}
+                transition={{ duration: 0.25 }}
+                className="mb-6 md:mb-8 pl-12 md:pl-0"
+            >
+                <p className="text-sm text-muted-foreground font-medium mb-1">
+                    Welcome back, {firstName}
+                </p>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     {currentWorkspace?.name || "Workspace"}
                 </h1>
-                <p className="text-sm md:text-base text-muted-foreground mt-1">
-                    {currentWorkspace?.description || "Workspace overview and quick actions"}
-                </p>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-                {/* Projects Card */}
-                <Link href={`/workspace/${workspaceId}/projects`}>
-                    <Card className="hover:border-primary/50 hover:shadow-lg transition-all duration-300 cursor-pointer group">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Projects
-                            </CardTitle>
-                            <FolderKanban className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl md:text-3xl font-bold">{projects?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Active projects in workspace</p>
-                        </CardContent>
-                    </Card>
-                </Link>
-
-                {/* Members Card */}
-                <Link href={`/workspace/${workspaceId}/members`}>
-                    <Card className="hover:border-primary/50 hover:shadow-lg transition-all duration-300 cursor-pointer group">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Members</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl md:text-3xl font-bold">{members?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Team members</p>
-                        </CardContent>
-                    </Card>
-                </Link>
-
-                {/* Settings Card - Only for Admins/Owners */}
-                {isAdmin && (
-                    <Link href={`/workspace/${workspaceId}/settings`}>
-                        <Card className="hover:border-primary/50 hover:shadow-lg transition-all duration-300 cursor-pointer group">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Settings</CardTitle>
-                                <Settings className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm font-medium">Configure workspace</p>
-                                <p className="text-xs text-muted-foreground mt-1">Workspace configuration</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                {currentWorkspace?.description && (
+                    <p className="text-sm md:text-base text-muted-foreground mt-1">
+                        {currentWorkspace.description}
+                    </p>
                 )}
+            </motion.div>
+
+            {/* Presence surface — who else is here right now */}
+            {otherOnlineUsers.length > 0 && (
+                <motion.div
+                    {...fadeUp}
+                    transition={{ duration: 0.25, delay: 0.05 }}
+                    className="mb-6 md:mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm w-fit"
+                >
+                    <div className="relative">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-500 animate-ping opacity-60" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{otherOnlineUsers.length}</span>{" "}
+                        {otherOnlineUsers.length === 1 ? "teammate" : "teammates"} online now
+                    </span>
+                    <div className="flex -space-x-2 ml-1">
+                        {otherOnlineUsers.slice(0, 5).map((u) => (
+                            <Avatar key={u._id} className="w-7 h-7 border-2 border-background ring-0">
+                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-medium">
+                                    {u.name?.charAt(0).toUpperCase() ?? "?"}
+                                </AvatarFallback>
+                            </Avatar>
+                        ))}
+                        {otherOnlineUsers.length > 5 && (
+                            <div className="w-7 h-7 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[9px] font-medium text-muted-foreground">
+                                +{otherOnlineUsers.length - 5}
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Navigation stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+                {[
+                    {
+                        href: `/workspace/${workspaceId}/projects`,
+                        label: "Projects",
+                        icon: <FolderKanban className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />,
+                        value: projects?.length ?? 0,
+                        sub: "Active projects",
+                        delay: 0.1,
+                    },
+                    {
+                        href: `/workspace/${workspaceId}/members`,
+                        label: "Members",
+                        icon: <Users className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />,
+                        value: members?.length ?? 0,
+                        sub: otherOnlineUsers.length > 0
+                            ? `${otherOnlineUsers.length} teammate${otherOnlineUsers.length === 1 ? "" : "s"} online`
+                            : "Team members",
+                        delay: 0.15,
+                    },
+                    ...(isAdmin
+                        ? [
+                            {
+                                href: `/workspace/${workspaceId}/settings`,
+                                label: "Settings",
+                                icon: <Settings className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />,
+                                value: null,
+                                sub: "Configure workspace",
+                                delay: 0.2,
+                            },
+                        ]
+                        : []),
+                ].map((card) => (
+                    <motion.div
+                        key={card.href}
+                        {...fadeUp}
+                        transition={{ duration: 0.25, delay: card.delay }}
+                    >
+                        <Link href={card.href}>
+                            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300 cursor-pointer group h-full">
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                                        {card.label}
+                                    </CardTitle>
+                                    {card.icon}
+                                </CardHeader>
+                                <CardContent>
+                                    {card.value !== null ? (
+                                        <div className="text-2xl md:text-3xl font-bold">{card.value}</div>
+                                    ) : (
+                                        <p className="text-sm font-medium">Configure workspace</p>
+                                    )}
+                                    <p className={cn(
+                                        "text-xs mt-1",
+                                        card.label === "Members" && otherOnlineUsers.length > 0
+                                            ? "text-green-600 dark:text-green-400 font-medium"
+                                            : "text-muted-foreground"
+                                    )}>
+                                        {card.sub}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </motion.div>
+                ))}
             </div>
 
-            {/* Recent Projects & Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Projects & Team Members */}
+            <motion.div
+                {...fadeUp}
+                transition={{ duration: 0.25, delay: 0.25 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            >
                 {/* Recent Projects */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
@@ -231,7 +302,7 @@ export default function WorkspaceOverviewPage() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {recentProjects.map((project: any) => (
+                                {recentProjects.map((project: { _id: string; name: string; description?: string; visibility?: string }) => (
                                     <div
                                         key={project._id}
                                         className="flex items-center justify-between p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200"
@@ -257,7 +328,7 @@ export default function WorkspaceOverviewPage() {
                     </CardContent>
                 </Card>
 
-                {/* Team Members */}
+                {/* Team Members with presence */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
@@ -282,34 +353,56 @@ export default function WorkspaceOverviewPage() {
                                 <p className="text-sm text-muted-foreground">No members yet</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {members.slice(0, 5).map((member: any, index: number) => (
-                                    <div
-                                        key={member.user?._id || index}
-                                        className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={member.user?.avatar} />
-                                                <AvatarFallback className="text-xs">
-                                                    {member.user?.name?.charAt(0)?.toUpperCase() || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="font-medium text-sm">{member.user?.name || "Unknown"}</p>
-                                                <p className="text-xs text-muted-foreground">{member.user?.email}</p>
-                                            </div>
-                                        </div>
-                                        <Badge
-                                            variant={member.role === "owner" ? "default" : "secondary"}
-                                            className="text-[10px]"
+                            <div className="space-y-2">
+                                {members.slice(0, 5).map((member: WorkspaceMember, index: number) => {
+                                    const userObj = typeof member.user === "string" ? null : member.user
+                                    const memberId = userObj?._id ?? ""
+                                    const isSelf = memberId === currentUserId
+                                    const online = !isSelf && isUserOnline(memberId)
+                                    return (
+                                        <div
+                                            key={memberId || index}
+                                            className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors"
                                         >
-                                            {member.role}
-                                        </Badge>
-                                    </div>
-                                ))}
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative shrink-0">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={userObj?.avatar ?? undefined} />
+                                                        <AvatarFallback className="text-xs">
+                                                            {userObj?.name?.charAt(0)?.toUpperCase() || "U"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    {online && (
+                                                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm leading-tight">
+                                                        {userObj?.name || "Unknown"}
+                                                        {isSelf && (
+                                                            <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">(You)</span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground leading-tight">
+                                                        {online ? (
+                                                            <span className="text-green-600 dark:text-green-400">Online</span>
+                                                        ) : (
+                                                            userObj?.email
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge
+                                                variant={member.role === "owner" ? "default" : "secondary"}
+                                                className="text-[10px]"
+                                            >
+                                                {member.role}
+                                            </Badge>
+                                        </div>
+                                    )
+                                })}
                                 {members.length > 5 && (
-                                    <p className="text-xs text-center text-muted-foreground">
+                                    <p className="text-xs text-center text-muted-foreground pt-1">
                                         +{members.length - 5} more members
                                     </p>
                                 )}
@@ -317,7 +410,7 @@ export default function WorkspaceOverviewPage() {
                         )}
                     </CardContent>
                 </Card>
-            </div>
+            </motion.div>
         </div>
     )
 }
