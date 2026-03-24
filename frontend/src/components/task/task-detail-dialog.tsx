@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from "react";
 import {
     Dialog,
@@ -20,7 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CalendarIcon, Loader2, Trash2, User, X, Lock } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2, User, Lock } from "lucide-react";
 import { format } from "date-fns";
 import type { Task, TaskStatus, TaskPriority } from "@/types";
 import { useTasks } from "@/hooks/use-task";
@@ -36,7 +38,7 @@ interface TaskDetailDialogProps {
     projectMembers?: any[];
     canEdit?: boolean;
     canEditStatus?: boolean;
-    canDelete?: boolean; // Separate permission for deletion (project owner/workspace admin)
+    canDelete?: boolean;
 }
 
 export function TaskDetailDialog({
@@ -87,7 +89,6 @@ export function TaskDetailDialog({
         try {
             setSaving(true);
 
-            // If only status edit is allowed, only send status
             const updateData = canEdit ? {
                 title: formData.title.trim(),
                 description: formData.description.trim(),
@@ -107,8 +108,6 @@ export function TaskDetailDialog({
                 title: "Task updated",
                 description: "Changes have been saved successfully",
             });
-
-            // Optional: Close on save if desired, but keeping open is usually better for continued editing
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -122,7 +121,6 @@ export function TaskDetailDialog({
 
     const handleDelete = async () => {
         if (!task) return;
-
         if (!confirm("Are you sure you want to delete this task?")) return;
 
         try {
@@ -144,11 +142,10 @@ export function TaskDetailDialog({
     if (!task) return null;
 
     const assignee = typeof task.assignee === "object" ? task.assignee : null;
-    const isReadOnly = !canEdit && !canEditStatus;
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         Task Details
@@ -165,34 +162,66 @@ export function TaskDetailDialog({
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
-                    {/* Title */}
-                    <div className="space-y-2">
-                        <Label htmlFor="task-title">Title</Label>
-                        <Input
-                            id="task-title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            placeholder="Task title"
-                            disabled={!canEdit}
-                        />
+                {/* Two-column layout: left = work, right = metadata */}
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-x-6 gap-y-4 py-4">
+
+                    {/* ── LEFT: The work ── */}
+                    <div className="space-y-4">
+                        {/* Title */}
+                        <div className="space-y-2">
+                            <Label htmlFor="task-title">Title</Label>
+                            <Input
+                                id="task-title"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                placeholder="Task title"
+                                disabled={!canEdit}
+                            />
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-2">
+                            <Label htmlFor="task-description">Description</Label>
+                            <Textarea
+                                id="task-description"
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                placeholder="Add a description..."
+                                rows={4}
+                                disabled={!canEdit}
+                            />
+                        </div>
+
+                        {/* Subtasks */}
+                        <div className="space-y-2">
+                            <Label>Subtasks</Label>
+                            {canEdit ? (
+                                <SubtaskList
+                                    subtasks={formData.subtasks}
+                                    onChange={(subtasks) => setFormData({ ...formData, subtasks })}
+                                />
+                            ) : (
+                                <div className="space-y-2 border rounded-md p-4 bg-muted/50">
+                                    {formData.subtasks.length > 0 ? (
+                                        formData.subtasks.map((st, i) => (
+                                            <div key={i} className="flex items-center gap-2">
+                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${st.completed ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                                    {st.completed && <div className="w-2 h-2 bg-primary-foreground rounded-sm" />}
+                                                </div>
+                                                <span className={st.completed ? "line-through text-muted-foreground text-sm" : "text-sm"}>{st.title}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground">No subtasks</span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Description */}
-                    <div className="space-y-2">
-                        <Label htmlFor="task-description">Description</Label>
-                        <Textarea
-                            id="task-description"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Add a description..."
-                            rows={4}
-                            disabled={!canEdit}
-                        />
-                    </div>
-
-                    {/* Status & Priority Row */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* ── RIGHT: The metadata ── */}
+                    <div className="space-y-4 md:border-l md:pl-6">
+                        {/* Status */}
                         <div className="space-y-2">
                             <Label>Status</Label>
                             <Select
@@ -214,6 +243,7 @@ export function TaskDetailDialog({
                             </Select>
                         </div>
 
+                        {/* Priority */}
                         <div className="space-y-2">
                             <Label>Priority</Label>
                             <Select
@@ -233,15 +263,15 @@ export function TaskDetailDialog({
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
 
-                    {/* Assignee & Due Date Row */}
-                    <div className="grid grid-cols-2 gap-4">
+                        {/* Assignee */}
                         <div className="space-y-2">
                             <Label>Assignee</Label>
                             <Select
                                 value={formData.assignee || "unassigned"}
-                                onValueChange={(value) => setFormData({ ...formData, assignee: value === "unassigned" ? "" : value })}
+                                onValueChange={(value) =>
+                                    setFormData({ ...formData, assignee: value === "unassigned" ? "" : value })
+                                }
                                 disabled={!canEdit}
                             >
                                 <SelectTrigger>
@@ -285,6 +315,7 @@ export function TaskDetailDialog({
                             </Select>
                         </div>
 
+                        {/* Due Date */}
                         <div className="space-y-2">
                             <Label>Due Date</Label>
                             {canEdit ? (
@@ -322,68 +353,41 @@ export function TaskDetailDialog({
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Labels */}
-                    <div className="space-y-2">
-                        <Label>Labels</Label>
-                        {canEdit ? (
-                            <LabelPicker
-                                labels={formData.labels}
-                                onChange={(labels) => setFormData({ ...formData, labels })}
-                            />
-                        ) : (
-                            <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border rounded-md bg-muted/50">
-                                {formData.labels.length > 0 ? (
-                                    formData.labels.map((label) => (
-                                        <div
-                                            key={label.name}
-                                            className="px-2 py-0.5 rounded-full text-xs text-white"
-                                            style={{ backgroundColor: label.color }}
-                                        >
-                                            {label.name}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <span className="text-sm text-muted-foreground">No labels</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Subtasks */}
-                    <div className="space-y-2">
-                        <Label>Subtasks</Label>
-                        {canEdit ? (
-                            <SubtaskList
-                                subtasks={formData.subtasks}
-                                onChange={(subtasks) => setFormData({ ...formData, subtasks })}
-                            />
-                        ) : (
-                            // Read-only subtasks view
-                            <div className="space-y-2 border rounded-md p-4 bg-muted/50">
-                                {formData.subtasks.length > 0 ? (
-                                    formData.subtasks.map((st, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                            <div className={`w-4 h-4 border rounded flex items-center justify-center ${st.completed ? "bg-primary border-primary" : "border-muted-foreground"}`}>
-                                                {st.completed && <div className="w-2 h-2 bg-primary-foreground rounded-sm" />}
+                        {/* Labels */}
+                        <div className="space-y-2">
+                            <Label>Labels</Label>
+                            {canEdit ? (
+                                <LabelPicker
+                                    labels={formData.labels}
+                                    onChange={(labels) => setFormData({ ...formData, labels })}
+                                />
+                            ) : (
+                                <div className="flex flex-wrap gap-2 min-h-[36px] p-2 border rounded-md bg-muted/50">
+                                    {formData.labels.length > 0 ? (
+                                        formData.labels.map((label) => (
+                                            <div
+                                                key={label.name}
+                                                className="px-2 py-0.5 rounded-full text-xs text-white"
+                                                style={{ backgroundColor: label.color }}
+                                            >
+                                                {label.name}
                                             </div>
-                                            <span className={st.completed ? "line-through text-muted-foreground" : ""}>{st.title}</span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <span className="text-sm text-muted-foreground">No subtasks</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground">No labels</span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
-                    {/* Metadata */}
-                    <div className="pt-4 border-t text-sm text-muted-foreground">
-                        <div>Created {task.createdAt ? format(new Date(task.createdAt), "PPP") : "Unknown"}</div>
-                        {task.createdBy && typeof task.createdBy === "object" && (
-                            <div>by {task.createdBy.name}</div>
-                        )}
+                        {/* Metadata */}
+                        <div className="pt-2 border-t text-xs text-muted-foreground space-y-0.5">
+                            <div>Created {task.createdAt ? format(new Date(task.createdAt), "PPP") : "Unknown"}</div>
+                            {task.createdBy && typeof task.createdBy === "object" && (
+                                <div>by {task.createdBy.name}</div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -395,7 +399,7 @@ export function TaskDetailDialog({
                             Delete
                         </Button>
                     ) : (
-                        <div></div> // Spacer
+                        <div />
                     )}
 
                     <div className="flex gap-2">

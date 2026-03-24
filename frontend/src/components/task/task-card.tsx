@@ -1,11 +1,13 @@
-import { Card, CardContent, CardHeader } from "../ui/card";
-import { Badge } from "../ui/badge";
+"use client"
+
+import { Card } from "../ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import type { Task } from "@/types";
 import { Button } from "../ui/button";
-import { CheckCircle2, Circle, CircleDot, CalendarDays, Check, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-
+import { cn } from "@/lib/utils";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface TaskCardProps {
     task: Task;
@@ -14,26 +16,27 @@ interface TaskCardProps {
     canEdit?: boolean;
 }
 
-const statusIcons = {
-    'todo': Circle,
-    'in-progress': CircleDot,
-    'review': CircleDot,
-    'done': CheckCircle2
+// Status dot — same color language as the section header dots
+const statusDotClasses: Record<string, string> = {
+    "todo": "bg-slate-400 dark:bg-slate-500",
+    "in-progress": "bg-blue-400",
+    "review": "bg-amber-400",
+    "done": "bg-emerald-500",
 };
 
-const priorityColors = {
-    low: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-    medium: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+// Priority = text weight. No badge needed.
+const priorityTitleClasses: Record<string, string> = {
+    low: "font-normal text-muted-foreground",
+    medium: "font-medium",
+    high: "font-semibold",
 };
-
 
 export function TaskCard({ task, onClick, onDelete, canEdit }: TaskCardProps) {
-    const StatusIcon = statusIcons[task.status];
-    const completedSubtasks = task.subtasks?.filter(st => st.completed).length || 0;
-    const totalSubtasks = task.subtasks?.length || 0;
-
-    const assignee = typeof task.assignee === 'object' ? task.assignee : null;
+    const shouldReduceMotion = useReducedMotion();
+    const completedSubtasks = task.subtasks?.filter((st) => st.completed).length ?? 0;
+    const totalSubtasks = task.subtasks?.length ?? 0;
+    const assignee = typeof task.assignee === "object" ? task.assignee : null;
+    const hasSecondary = assignee !== null || totalSubtasks > 0;
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -43,92 +46,81 @@ export function TaskCard({ task, onClick, onDelete, canEdit }: TaskCardProps) {
     };
 
     return (
-        <Card
-            className="cursor-pointer hover:shadow-md transition-all duration-300 hover:border-primary/50 hover:bg-accent/50 group"
-            onClick={onClick}
+        <motion.div
+            whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+            transition={{ duration: 0.12 }}
         >
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 flex-1">
-                        <StatusIcon className="w-4 h-4 mt-1 text-muted-foreground shrink-0" />
-                        <h3 className="font-medium line-clamp-2">{task.title}</h3>
-                    </div>
-
-                    <div className="flex items-center gap-2">
+            <Card
+                className="cursor-pointer group transition-shadow duration-200 hover:shadow-sm"
+                onClick={onClick}
+            >
+                <div className="px-4 py-3">
+                    {/* Title row: status dot + title (priority weight) + delete */}
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                            {/* Status dot — consistent with section header */}
+                            <span
+                                className={cn(
+                                    "mt-[5px] w-1.5 h-1.5 rounded-full shrink-0",
+                                    statusDotClasses[task.status] ?? "bg-slate-400"
+                                )}
+                            />
+                            <h3
+                                className={cn(
+                                    "text-sm leading-snug line-clamp-2",
+                                    priorityTitleClasses[task.priority] ?? "font-medium"
+                                )}
+                            >
+                                {task.title}
+                            </h3>
+                        </div>
                         {canEdit && (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-5 w-5 shrink-0 -mt-0.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={handleDelete}
+                                tabIndex={-1}
                             >
                                 <Trash2 className="w-3 h-3" />
                             </Button>
                         )}
-                        <Badge variant="secondary" className={priorityColors[task.priority]}>
-                            {task.priority || "medium"}
-                        </Badge>
-                    </div>
-                </div>
-            </CardHeader>
-
-            <CardContent className="pt-0">
-                {task.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                        {task.description}
-                    </p>
-                )}
-
-                {/* labels */}
-                {task.labels && task.labels.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                        {task.labels.map((label, idx) => (
-                            <Badge
-                                key={idx}
-                                variant="outline"
-                                style={{ borderColor: label.color, color: label.color }}
-                                className="text-xs"
-                            >
-                                {label.name}
-                            </Badge>
-                        ))}
-                    </div>
-                )}
-
-                {/* footer */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                        {/* assignee */}
-                        {assignee && (
-                            <div className="flex items-center gap-1">
-                                <Avatar className="w-5 h-5">
-                                    <AvatarImage src={assignee.avatar || undefined} />
-                                    <AvatarFallback className="text-[10px]">
-                                        {assignee.name.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </div>
-                        )}
-
-                        {/* subtasks */}
-                        {totalSubtasks > 0 && (
-                            <span className="flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                {completedSubtasks}/{totalSubtasks}
-                            </span>
-                        )}
                     </div>
 
-                    {/* due date */}
+                    {/* Hover-reveal: assignee + subtask progress */}
+                    {hasSecondary && (
+                        <div className="mt-2 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 h-5 pl-3.5">
+                            {assignee && (
+                                <div className="flex items-center gap-1.5">
+                                    <Avatar className="w-4 h-4">
+                                        <AvatarImage src={assignee.avatar || undefined} />
+                                        <AvatarFallback className="text-[8px]">
+                                            {assignee.name.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                                        {assignee.name}
+                                    </span>
+                                </div>
+                            )}
+                            {totalSubtasks > 0 && (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    {completedSubtasks}/{totalSubtasks}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Due date */}
                     {task.dueDate && (
-                        <span className="flex items-center gap-1">
+                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground pl-3.5">
                             <CalendarDays className="w-3 h-3" />
-                            {format(new Date(task.dueDate), 'MMM d')}
-                        </span>
+                            {format(new Date(task.dueDate), "MMM d")}
+                        </div>
                     )}
                 </div>
-            </CardContent>
-        </Card>
-    )
+            </Card>
+        </motion.div>
+    );
 }
-

@@ -7,6 +7,8 @@ import {
     Sheet,
     SheetContent,
     SheetTrigger,
+    SheetHeader,
+    SheetTitle,
 } from "@/components/ui/sheet"
 import { Sidebar } from "./sidebar"
 
@@ -27,6 +29,9 @@ export function MobileNav() {
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-64">
+                <SheetHeader className="sr-only">
+                    <SheetTitle>Navigation</SheetTitle>
+                </SheetHeader>
                 <Sidebar />
             </SheetContent>
         </Sheet>

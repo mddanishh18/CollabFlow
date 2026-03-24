@@ -22,6 +22,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 import {
     Mail,
     Loader2,
@@ -29,6 +31,7 @@ import {
     UserPlus,
     Shield,
     User,
+    Check,
 } from "lucide-react"
 
 interface InviteMemberDialogProps {
@@ -44,6 +47,30 @@ interface FormData {
 }
 
 type FormErrors = Partial<Record<keyof FormData | "submit", string>>
+
+const ROLE_META = {
+    member: {
+        icon: User,
+        label: "Member",
+        summary: "Can view and collaborate on projects",
+        permissions: [
+            "Access workspace projects they're added to",
+            "Create tasks and leave comments",
+            "View team members",
+        ],
+    },
+    admin: {
+        icon: Shield,
+        label: "Admin",
+        summary: "Can manage workspace settings and members",
+        permissions: [
+            "Everything a member can do",
+            "Invite and remove members",
+            "Change workspace settings",
+            "Create and delete projects",
+        ],
+    },
+} as const
 
 export function InviteMemberDialog({
     open,
@@ -84,15 +111,12 @@ export function InviteMemberDialog({
             await inviteMember(workspaceId, formData.email.trim(), formData.role)
 
             toast({
-                title: "Invitation sent! 📧",
+                title: "Invitation sent",
                 description: `An invitation has been sent to ${formData.email}`,
             })
 
-            // Reset form
             setFormData({ email: "", role: "member" })
             setErrors({})
-
-            // Close dialog and notify parent
             onOpenChange(false)
             if (onSuccess) onSuccess()
         } catch (error) {
@@ -115,22 +139,25 @@ export function InviteMemberDialog({
         }
     }
 
+    const roleMeta = ROLE_META[formData.role === "admin" ? "admin" : "member"]
+
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[460px]">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <UserPlus className="h-5 w-5 text-primary" />
-                        Invite Team Member
+                    <DialogTitle className="flex items-center gap-2.5 text-base">
+                        <div className="p-1.5 rounded-md bg-primary/10">
+                            <UserPlus className="h-4 w-4 text-primary" />
+                        </div>
+                        Invite to workspace
                     </DialogTitle>
                     <DialogDescription>
-                        Send an email invitation to add someone to your workspace.
+                        The person will receive an email with a link to join.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="grid gap-4 py-4">
-                        {/* Error Alert */}
+                    <div className="grid gap-5 py-2">
                         {errors.submit && (
                             <Alert variant="destructive">
                                 <AlertCircle className="h-4 w-4" />
@@ -138,18 +165,22 @@ export function InviteMemberDialog({
                             </Alert>
                         )}
 
-                        {/* Email Input */}
+                        {/* Email */}
                         <div className="grid gap-2">
                             <Label htmlFor="invite-email">
-                                Email Address <span className="text-destructive">*</span>
+                                Email address{" "}
+                                <span className="text-destructive" aria-hidden>*</span>
                             </Label>
                             <Input
                                 id="invite-email"
                                 type="email"
-                                placeholder="colleague@example.com"
+                                placeholder="colleague@company.com"
                                 value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className={errors.email ? "border-destructive" : ""}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, email: e.target.value })
+                                    if (errors.email) setErrors({ ...errors, email: undefined })
+                                }}
+                                className={cn(errors.email && "border-destructive focus-visible:ring-destructive")}
                                 disabled={isSubmitting}
                                 autoFocus
                             />
@@ -158,12 +189,14 @@ export function InviteMemberDialog({
                             )}
                         </div>
 
-                        {/* Role Select */}
+                        {/* Role */}
                         <div className="grid gap-2">
                             <Label htmlFor="invite-role">Role</Label>
                             <Select
                                 value={formData.role}
-                                onValueChange={(value) => setFormData({ ...formData, role: value as "member" | "admin" | "viewer" })}
+                                onValueChange={(value) =>
+                                    setFormData({ ...formData, role: value as "member" | "admin" | "viewer" })
+                                }
                                 disabled={isSubmitting}
                             >
                                 <SelectTrigger id="invite-role">
@@ -172,35 +205,37 @@ export function InviteMemberDialog({
                                 <SelectContent>
                                     <SelectItem value="member">
                                         <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4" />
-                                            <div>
-                                                <span className="font-medium">Member</span>
-                                                <span className="text-xs text-muted-foreground ml-2">
-                                                    Can view and edit projects
-                                                </span>
-                                            </div>
+                                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <span>Member</span>
                                         </div>
                                     </SelectItem>
                                     <SelectItem value="admin">
                                         <div className="flex items-center gap-2">
-                                            <Shield className="h-4 w-4" />
-                                            <div>
-                                                <span className="font-medium">Admin</span>
-                                                <span className="text-xs text-muted-foreground ml-2">
-                                                    Can manage workspace settings
-                                                </span>
-                                            </div>
+                                            <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <span>Admin</span>
                                         </div>
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">
-                                {formData.role === "admin"
-                                    ? "Admins can invite members and change settings"
-                                    : "Members can view and collaborate on projects"}
+                        </div>
+
+                        {/* Role permission card */}
+                        <div className="rounded-lg border bg-muted/30 p-3.5 space-y-2.5">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                {roleMeta.label} access
                             </p>
+                            <ul className="space-y-1.5">
+                                {roleMeta.permissions.map((perm) => (
+                                    <li key={perm} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                        <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                                        {perm}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
+
+                    <Separator className="my-4" />
 
                     <DialogFooter className="flex-col sm:flex-row gap-2">
                         <Button
@@ -215,12 +250,12 @@ export function InviteMemberDialog({
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Sending...
+                                    Sending…
                                 </>
                             ) : (
                                 <>
                                     <Mail className="mr-2 h-4 w-4" />
-                                    Send Invitation
+                                    Send invitation
                                 </>
                             )}
                         </Button>

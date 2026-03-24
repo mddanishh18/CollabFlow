@@ -1,23 +1,25 @@
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { z } from "zod"
-import { Card } from "../ui/card"
-import { Input } from "../ui/input"
-import { Label } from "@radix-ui/react-label"
-import { Button } from "../ui/button"
-import { useAuthStore } from "@/store/auth-store"
-import { api } from "@/lib/api"
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { z } from 'zod'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Input } from '../ui/input'
+import { Label } from '@radix-ui/react-label'
+import { Button } from '../ui/button'
+import { useAuthStore } from '@/store/auth-store'
+import { api } from '@/lib/api'
 
 const loginSchema = z.object({
     email: z
         .string()
-        .min(1, "Email is required")
-        .email("Please enter a valid email"),
+        .min(1, 'Email is required')
+        .email('Please enter a valid email'),
     password: z
         .string()
-        .min(1, "Password is required")
-        .min(6, "Password must be at least 6 characters"),
+        .min(1, 'Password is required')
+        .min(6, 'Password must be at least 6 characters'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -26,15 +28,16 @@ type FormErrors = Partial<Record<keyof LoginFormData, string>>
 export default function LoginForm() {
     const router = useRouter()
     const login = useAuthStore((state) => state.login)
+    const shouldReduceMotion = useReducedMotion()
 
     const [formData, setFormData] = useState<LoginFormData>({
-        email: "",
-        password: "",
+        email: '',
+        password: '',
     })
 
     const [errors, setErrors] = useState<FormErrors>({})
     const [isLoading, setIsLoading] = useState(false)
-    const [apiError, setApiError] = useState("")
+    const [apiError, setApiError] = useState('')
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
@@ -47,7 +50,7 @@ export default function LoginForm() {
         if (errors[name as keyof LoginFormData]) {
             setErrors((prev) => ({
                 ...prev,
-                [name]: "",
+                [name]: '',
             }))
         }
     }
@@ -73,7 +76,7 @@ export default function LoginForm() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        setApiError("")
+        setApiError('')
 
         if (!validateForm()) {
             return
@@ -82,12 +85,12 @@ export default function LoginForm() {
         setIsLoading(true)
 
         try {
-            const response = await api.post("/api/auth/login", formData)
+            const response = await api.post('/api/auth/login', formData)
 
             if (response.success) {
                 const { user, token } = response.data
                 login(user, token)
-                router.push("/workspace")
+                router.push('/workspace')
             }
         } catch (error) {
             setApiError((error as Error).message)
@@ -97,80 +100,89 @@ export default function LoginForm() {
     }
 
     return (
-        <div className="min-h-dvh flex items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
-            <div className="max-w-sm sm:max-w-md w-full">
-                <Card className="bg-card text-card-foreground rounded-lg sm:rounded-xl shadow-lg p-6 sm:p-8 border border-border">
-                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-                        <div className="text-center mb-6 sm:mb-8">
-                            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
-                                Login
-                            </h2>
-                            <p className="text-sm sm:text-base text-muted-foreground">
-                                Sign in to get started
-                            </p>
-                        </div>
-
-                        {apiError && (
-                            <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm">
-                                {apiError}
-                            </div>
-                        )}
-
-                        <div className="space-y-1.5">
-                            <Label htmlFor="email" className="text-foreground font-medium text-sm sm:text-base block">
-                                Email
-                            </Label>
-                            <Input
-                                type="email"
-                                id="email"
-                                name="email"
-                                autoComplete="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="w-full h-10 sm:h-11 bg-background border-input text-foreground placeholder:text-muted-foreground focus:ring-ring text-sm sm:text-base"
-                                placeholder="Enter your email"
-                            />
-                            {errors.email && (
-                                <p className="text-destructive text-xs sm:text-sm mt-1">{errors.email}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label htmlFor="password" className="text-foreground font-medium text-sm sm:text-base block">
-                                Password
-                            </Label>
-                            <Input
-                                type="password"
-                                id="password"
-                                name="password"
-                                autoComplete="current-password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                className="w-full h-10 sm:h-11 bg-background border-input text-foreground placeholder:text-muted-foreground focus:ring-ring text-sm sm:text-base"
-                                placeholder="Enter your password"
-                            />
-                            {errors.password && (
-                                <p className="text-destructive text-xs sm:text-sm mt-1">{errors.password}</p>
-                            )}
-                        </div>
-
-                        <Button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full h-10 sm:h-11 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium mt-6"
-                        >
-                            {isLoading ? "Logging in..." : "Login"}
-                        </Button>
-
-                        <p className="text-sm sm:text-base text-muted-foreground mt-4">
-                            Don't have an account?{" "}
-                            <Link href="/register" className="text-primary hover:underline">
-                                Register
-                            </Link>
-                        </p>
-                    </form>
-                </Card>
+        <motion.div
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+        >
+            <div className="mb-8">
+                <h2
+                    className="text-2xl font-bold text-foreground mb-1.5"
+                    style={{ letterSpacing: '-0.02em' }}
+                >
+                    Welcome back.
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    Sign in to your account to continue.
+                </p>
             </div>
-        </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {apiError && (
+                    <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                        {apiError}
+                    </div>
+                )}
+
+                <div className="space-y-1.5">
+                    <Label
+                        htmlFor="email"
+                        className="text-sm font-medium text-foreground block"
+                    >
+                        Email
+                    </Label>
+                    <Input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autoComplete="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="w-full h-10 bg-background border-input text-foreground placeholder:text-muted-foreground"
+                        placeholder="you@example.com"
+                    />
+                    {errors.email && (
+                        <p className="text-destructive text-xs mt-1">{errors.email}</p>
+                    )}
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label
+                        htmlFor="password"
+                        className="text-sm font-medium text-foreground block"
+                    >
+                        Password
+                    </Label>
+                    <Input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autoComplete="current-password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full h-10 bg-background border-input text-foreground placeholder:text-muted-foreground"
+                        placeholder="Your password"
+                    />
+                    {errors.password && (
+                        <p className="text-destructive text-xs mt-1">{errors.password}</p>
+                    )}
+                </div>
+
+                <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-10 mt-2"
+                >
+                    {isLoading ? 'Signing in…' : 'Sign in'}
+                </Button>
+
+                <p className="text-sm text-muted-foreground text-center pt-1">
+                    Don&apos;t have an account?{' '}
+                    <Link href="/register" className="text-foreground hover:text-primary transition-colors font-medium">
+                        Create one
+                    </Link>
+                </p>
+            </form>
+        </motion.div>
     )
 }

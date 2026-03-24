@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { usePathname, useParams, useRouter } from "next/navigation"
 import { WorkspaceSwitcher } from "./workspace-switcher"
@@ -19,8 +19,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { type LucideIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
     LayoutDashboard,
     Users,
@@ -54,7 +55,8 @@ export function Sidebar() {
     const { currentWorkspace } = useWorkspace()
     const [invitationsOpen, setInvitationsOpen] = useState(false)
     const [aiPreviewOpen, setAiPreviewOpen] = useState(false)
-    const [isNavigating, setIsNavigating] = useState(false)
+    const [isPending, startTransition] = useTransition()
+    const shouldAnimate = !useReducedMotion()
 
     // Get user's role - check userRole property first (from API), then members array
     const userRole =
@@ -66,17 +68,13 @@ export function Sidebar() {
 
     const isAdminOrOwner = userRole === "owner" || userRole === "admin"
 
-    // Smooth navigation handler
+    // Navigation handler using useTransition for real App Router feedback
     const handleNavigation = (href: string, e: React.MouseEvent) => {
         if (href === pathname) return
-        
         e.preventDefault()
-        setIsNavigating(true)
-        
-        setTimeout(() => {
+        startTransition(() => {
             router.push(href)
-            setTimeout(() => setIsNavigating(false), 250)
-        }, 100)
+        })
     }
 
     const routes: Route[] = [
@@ -126,8 +124,8 @@ export function Sidebar() {
 
     return (
         <>
-            {/* Navigation Progress Bar */}
-            {isNavigating && (
+            {/* Navigation Progress Bar — driven by real useTransition pending state */}
+            {isPending && (
                 <motion.div
                     className="fixed top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary/80 to-primary z-[9999]"
                     initial={{ scaleX: 0, originX: 0 }}
@@ -145,42 +143,46 @@ export function Sidebar() {
                 <Separator />
 
                 {/* Navigation */}
-                <nav className="flex-1 space-y-1 p-3 md:p-4 overflow-y-auto">
+                <nav className="flex-1 space-y-0.5 p-3 md:p-4 overflow-y-auto">
                     {routes
                         .filter((route) => route.show)
                         .map((route) => (
-                            <Link 
-                                key={route.href} 
-                                href={route.href}
-                                onClick={(e) => handleNavigation(route.href, e)}
-                            >
-                                <Button
-                                    variant={route.active ? "secondary" : "ghost"}
-                                    className={`w-full justify-start text-sm md:text-base transition-all duration-300 ease-in-out ${route.active
-                                        ? "bg-secondary shadow-sm"
-                                        : "hover:bg-accent hover:scale-105 hover:shadow-md"
-                                        } group`}
+                            <div key={route.href} className="relative">
+                                {route.active && (
+                                    <motion.div
+                                        layoutId={shouldAnimate ? "nav-active-bg" : undefined}
+                                        className="absolute inset-0 rounded-md bg-secondary"
+                                        initial={false}
+                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                    >
+                                        <div className="absolute left-0 top-[28%] bottom-[28%] w-[2px] bg-primary rounded-full" />
+                                    </motion.div>
+                                )}
+                                <Link
+                                    href={route.href}
+                                    onClick={(e) => handleNavigation(route.href, e)}
                                 >
-                                    <route.icon
-                                        className={`mr-2 h-4 w-4 transition-transform duration-300 ${route.active
-                                            ? "text-primary"
-                                            : "group-hover:scale-110 group-hover:text-primary"
-                                            }`}
-                                    />
-                                    <span className="transition-all duration-300 group-hover:translate-x-1">
+                                    <div className={cn(
+                                        "relative flex items-center w-full px-3 py-2 rounded-md text-sm h-9 cursor-pointer",
+                                        "transition-colors duration-150",
+                                        route.active
+                                            ? "text-secondary-foreground font-medium"
+                                            : "text-foreground/85 hover:text-foreground hover:bg-accent/70"
+                                    )}>
+                                        <route.icon className={cn("mr-2.5 h-4 w-4 shrink-0 transition-colors duration-150", route.active && "text-primary")} />
                                         {route.label}
-                                    </span>
-                                </Button>
-                            </Link>
+                                    </div>
+                                </Link>
+                            </div>
                         ))}
                     {/* AI Assistant Preview Button */}
                     <Button
                         variant="ghost"
                         onClick={() => setAiPreviewOpen(true)}
-                        className="w-full justify-start text-sm md:text-base transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-md group border border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+                        className="w-full justify-start text-sm text-foreground/85 transition-colors duration-150 hover:bg-primary/5 group border border-primary/15 hover:border-primary/30 mt-1"
                     >
-                        <Bot className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:text-primary" />
-                        <span className="transition-all duration-300 group-hover:translate-x-1 flex-1 text-left">
+                        <Bot className="mr-2.5 h-4 w-4 shrink-0 transition-colors duration-150" />
+                        <span className="flex-1 text-left">
                             AI Assistant
                         </span>
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Soon</Badge>
@@ -189,10 +191,10 @@ export function Sidebar() {
                     <Button
                         variant="ghost"
                         onClick={() => setInvitationsOpen(true)}
-                        className="w-full justify-start text-sm md:text-base transition-all duration-300 ease-in-out hover:bg-accent hover:scale-105 hover:shadow-md group"
+                        className="w-full justify-start text-sm text-foreground/85 transition-colors duration-150 hover:bg-accent/70 group"
                     >
-                        <UserPlus className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:text-primary" />
-                        <span className="transition-all duration-300 group-hover:translate-x-1">
+                        <UserPlus className="mr-2.5 h-4 w-4 shrink-0 transition-colors duration-150" />
+                        <span>
                             Pending Invitations
                         </span>
                     </Button>
@@ -202,7 +204,7 @@ export function Sidebar() {
 
                 {/* Bottom Section */}
                 <div className="p-3 md:p-4 space-y-2">
-                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-all duration-300 hover:scale-105">
+                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors duration-150">
                         <span className="text-xs md:text-sm text-muted-foreground">Theme</span>
                         <ThemeToggle />
                     </div>
@@ -210,11 +212,11 @@ export function Sidebar() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start text-xs md:text-sm text-destructive hover:text-destructive hover:bg-destructive/10 hover:scale-105 hover:shadow-md transition-all duration-300 group"
+                        className="w-full justify-start text-xs md:text-sm text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors duration-150"
                         onClick={logout}
                     >
-                        <LogOut className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                        <span className="transition-all duration-300 group-hover:translate-x-1">
+                        <LogOut className="mr-2 h-4 w-4 transition-colors duration-150" />
+                        <span>
                             Logout
                         </span>
                     </Button>

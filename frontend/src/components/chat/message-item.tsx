@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useChat } from "@/hooks/use-chat";
 import { useAuthStore } from "@/store/auth-store";
 import { MoreVertical, Pencil, Trash2, Loader2, Check, CheckCheck } from "lucide-react";
@@ -26,12 +27,22 @@ import type { Message } from "@/types";
 interface MessageItemProps {
     message: Message;
     channelId: string;
+    isFirstInGroup?: boolean;
+    isLastInGroup?: boolean;
+    isNew?: boolean;
 }
 
-export function MessageItem({ message, channelId }: MessageItemProps) {
+export function MessageItem({
+    message,
+    channelId,
+    isFirstInGroup = true,
+    isLastInGroup = true,
+    isNew = false,
+}: MessageItemProps) {
     const { editMessage, deleteMessage } = useChat();
     const { user } = useAuthStore();
     const { toast } = useToast();
+    const prefersReducedMotion = useReducedMotion();
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(message.content);
@@ -108,37 +119,52 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
         }
     };
 
+    const animationProps = isNew && !prefersReducedMotion
+        ? {
+            initial: { opacity: 0, y: 8 },
+            animate: { opacity: 1, y: 0 },
+            transition: { duration: 0.2, ease: "easeOut" as const },
+        }
+        : {};
+
     return (
-        <div
+        <motion.div
             className={cn(
                 "flex gap-3 px-4 py-2 -mx-4 transition-colors",
                 isOwnMessage ? "flex-row-reverse justify-start" : "group hover:bg-muted/50",
-                isDeleting && "opacity-50 pointer-events-none"
+                isDeleting && "opacity-50 pointer-events-none",
+                isLastInGroup !== false ? "mb-4" : "mb-0.5"
             )}
+            {...animationProps}
         >
             {/* Avatar - hidden for own messages or shown for others */}
             {!isOwnMessage && (
-                <Avatar className="w-10 h-10 shrink-0">
-                    <AvatarImage src={senderAvatar && senderAvatar ? senderAvatar : undefined} />
-                    <AvatarFallback>
-                        {senderName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                isFirstInGroup !== false ? (
+                    <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarImage src={senderAvatar && senderAvatar ? senderAvatar : undefined} />
+                        <AvatarFallback>
+                            {senderName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
+                ) : (
+                    <div className="w-10 h-10 shrink-0 flex-none" />
+                )
             )}
 
             <div className={cn(
                 "min-w-0 max-w-[70%] flex flex-col",
                 isOwnMessage && "items-end"
             )}>
-                {/* Header */}
-                <div className={cn(
-                    "flex items-baseline gap-2 mb-1",
-                    isOwnMessage && "flex-row-reverse"
-                )}>
-                    <span className="font-semibold text-sm">
-                        {isOwnMessage ? "You" : senderName}
-                    </span>
-                    <div className="flex items-center gap-2">
+                {/* Header - only show if first in group */}
+                {isFirstInGroup !== false && (
+                    <div className={cn(
+                        "flex items-baseline gap-2 mb-1",
+                        isOwnMessage && "flex-row-reverse"
+                    )}>
+                        <span className="font-semibold text-sm">
+                            {isOwnMessage ? "You" : senderName}
+                        </span>
+                        <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
                             {new Date(message.createdAt).toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -219,7 +245,8 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                             </TooltipProvider>
                         )}
                     </div>
-                </div>
+                    </div>
+                )}
 
                 {/* Content */}
                 {isEditing ? (
@@ -239,10 +266,11 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                 ) : (
                     <>
                         <div className={cn(
-                            "text-sm whitespace-pre-wrap break-words rounded-lg px-4 py-2",
+                            "text-sm whitespace-pre-wrap break-words rounded-2xl px-4 py-2",
                             isOwnMessage
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-foreground"
+                                : "bg-muted text-foreground",
+                            isFirstInGroup === false && (isOwnMessage ? "rounded-tr-sm" : "rounded-tl-sm")
                         )}>
                             {message.content}
                         </div>
@@ -299,6 +327,6 @@ export function MessageItem({ message, channelId }: MessageItemProps) {
                     </DropdownMenu>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 }

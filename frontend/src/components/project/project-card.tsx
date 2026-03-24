@@ -17,7 +17,6 @@ import {
     Users,
     Lock,
     Globe,
-    Calendar,
     ExternalLink,
 } from "lucide-react"
 import Link from "next/link"
@@ -71,19 +70,19 @@ export function ProjectCard({
     }
 
     return (
-        <Card className="hover:border-primary/50 hover:shadow-lg transition-all duration-300 group h-full">
+        <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-200 group h-full">
             <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                            <FolderKanban className="h-5 w-5 text-primary" />
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                            <FolderKanban className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <CardTitle className="text-base font-semibold truncate group-hover:text-primary transition-colors">
+                            <CardTitle className="text-base font-semibold truncate group-hover:text-primary transition-colors leading-tight">
                                 {project.name}
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground truncate">
-                                {project.members?.length || 0} members
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {project.members?.length || 0} {project.members?.length === 1 ? "member" : "members"}
                             </p>
                         </div>
                     </div>
@@ -128,11 +127,11 @@ export function ProjectCard({
             </CardHeader>
 
             <CardContent className="pt-2">
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-4 min-h-[40px]">
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                     {project.description || "No description provided"}
                 </p>
 
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 mb-4">
                     <Badge
                         variant="secondary"
                         className={`text-xs flex items-center gap-1 ${getVisibilityColor(project.visibility)}`}
@@ -140,28 +139,16 @@ export function ProjectCard({
                         {getVisibilityIcon(project.visibility)}
                         {project.visibility || "workspace"}
                     </Badge>
-
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(project.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: project.createdAt?.includes(new Date().getFullYear().toString())
-                                ? undefined
-                                : "numeric",
-                        })}
-                    </span>
                 </div>
 
                 {/* Project Link */}
                 {workspaceId && (
-                    <Link href={`/workspace/${workspaceId}/projects/${project._id}`} className="mt-4 block">
+                    <Link href={`/workspace/${workspaceId}/projects/${project._id}`} className="block">
                         <Button
-                            variant="outline"
                             size="sm"
-                            className="w-full group/btn hover:bg-primary hover:text-primary-foreground transition-all"
+                            className="w-full"
                         >
-                            <ExternalLink className="mr-2 h-3 w-3 group-hover/btn:scale-110 transition-transform" />
+                            <ExternalLink className="mr-2 h-3 w-3" />
                             Open Project
                         </Button>
                     </Link>

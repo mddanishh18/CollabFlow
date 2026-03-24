@@ -1,99 +1,110 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { BentoGrid } from './BentoGrid';
 
 export function HeroSection() {
-    return (
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
-            {/* Animated background glow (uses primary color from globals.css) */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,var(--primary)_0%,transparent_50%)] opacity-20 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,var(--accent)_0%,transparent_50%)] opacity-15 blur-3xl" />
+    const shouldReduceMotion = useReducedMotion();
+    const translateY = shouldReduceMotion ? 0 : 24;
 
-            <div className="container relative z-10 px-4 sm:px-6 lg:px-8 py-20">
-                <div className="mx-auto max-w-5xl text-center">
-                    {/* Coming Soon Badge */}
+    const stagger = {
+        hidden: {},
+        visible: {
+            transition: { staggerChildren: 0.11, delayChildren: 0.05 },
+        },
+    };
+
+    const reveal = {
+        hidden: { opacity: 0, y: translateY },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+        },
+    };
+
+    return (
+        <section className="relative overflow-hidden bg-background pt-24 pb-16">
+            {/* Atmospheric orb — single, top-right corner, very low opacity */}
+            <div
+                className="pointer-events-none absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full"
+                style={{
+                    background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)',
+                    opacity: 0.11,
+                }}
+            />
+
+            <div className="container relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Text block — left-aligned on desktop, centered on mobile */}
+                <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={stagger}
+                    className="flex flex-col items-center md:items-start"
+                >
+                    {/* Badge */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary mb-8"
+                        variants={reveal}
+                        className="mb-8 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
                     >
-                        <Sparkles className="h-4 w-4" />
+                        <Sparkles className="h-3 w-3" />
                         <span>AI Assistant: Coming Soon</span>
                     </motion.div>
 
-                    {/* Main Headline */}
+                    {/* Headline — weight + scale only, no gradient */}
                     <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.1 }}
-                        className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-6"
+                        variants={reveal}
+                        className="font-extrabold leading-none text-foreground mb-6 text-center md:text-left"
+                        style={{
+                            fontSize: 'clamp(3.5rem, 7vw, 7rem)',
+                            letterSpacing: '-0.04em',
+                        }}
                     >
-                        Collaborate Smarter,{' '}
-                        <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                            Ship Faster
-                        </span>
+                        Work together.
+                        <br />
+                        Actually together.
                     </motion.h1>
 
-                    {/* Subheadline */}
+                    {/* Sub-headline — one line, 13 words */}
                     <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                        className="text-xl sm:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed"
+                        variants={reveal}
+                        className="mb-10 max-w-lg text-center md:text-left text-xl font-normal leading-relaxed text-muted-foreground"
                     >
-                        Real-time workspaces where teams align, build, and scale
-                        <span className="font-semibold text-foreground"> — powered by AI that actually understands your context.</span>
+                        Real-time workspaces where teams align, build, and ship together.
                     </motion.p>
 
-                    {/* CTAs */}
+                    {/* CTAs — no whileHover scale, shadcn Button */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.3 }}
-                        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                        variants={reveal}
+                        className="flex flex-col sm:flex-row gap-3 items-center md:items-start"
                     >
-                        <Link href="/register">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="group relative overflow-hidden rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground shadow-lg hover:shadow-xl transition-all"
-                            >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    Try CollabFlow Free
-                                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                                </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </motion.button>
-                        </Link>
+                        <Button size="lg" asChild className="group">
+                            <Link href="/register">
+                                Try CollabFlow Free
+                                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                            </Link>
+                        </Button>
 
-                        <Link href="#rag-showcase">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="group px-8 py-4 text-lg font-semibold text-foreground border-2 border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all"
-                            >
-                                <span className="flex items-center gap-2">
-                                    See AI in Action
-                                    <Sparkles className="h-5 w-5 text-primary group-hover:rotate-12 transition-transform" />
-                                </span>
-                            </motion.button>
-                        </Link>
+                        <Button size="lg" variant="outline" asChild>
+                            <Link href="#rag-showcase">
+                                See AI in Action
+                            </Link>
+                        </Button>
                     </motion.div>
+                </motion.div>
 
-                    {/* Bento Grid Product Preview */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.5 }}
-                        className="mt-20"
-                    >
-                        <BentoGrid />
-                    </motion.div>
-                </div>
+                {/* Bento Grid — full container width, delayed reveal */}
+                <motion.div
+                    initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.65, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                    className="mt-20"
+                >
+                    <BentoGrid />
+                </motion.div>
             </div>
         </section>
     );
