@@ -6,10 +6,11 @@ import { ReactNode, useEffect } from "react"
 import { useChat } from "@/hooks/use-chat"
 
 function WorkspaceUnreadInit({ workspaceId }: { workspaceId: string }) {
-    const { fetchWorkspaceUnreadCounts } = useChat()
+    const { fetchWorkspaceUnreadCounts, fetchChannels } = useChat()
     useEffect(() => {
         if (workspaceId) {
             fetchWorkspaceUnreadCounts(workspaceId)
+            fetchChannels(workspaceId)
         }
         // Run once per workspace load — real-time updates handle the rest
         // eslint-disable-next-line react-hooks/exhaustive-deps

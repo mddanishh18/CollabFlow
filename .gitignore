@@ -37,9 +37,8 @@ PRODUCTION_CREDENTIALS.md
 
 # Documentation and temporary files (keep only backend and frontend)
 *.md
+CLAUDE.md
 !README.md
-!CLAUDE.md
-!frontend/CLAUDE.md
 !.claude/**/*.md
 z-documents/
 verify-chat-fixes.js
