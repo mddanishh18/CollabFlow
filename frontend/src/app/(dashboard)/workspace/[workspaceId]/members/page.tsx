@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useAuthStore } from "@/store/auth-store"
 import { useToast } from "@/hooks/use-toast"
-import { useWorkspacePresence } from "@/hooks/use-workspace-presence"
+import { useWorkspacePresenceContext } from "@/providers/workspace-presence-provider"
 import { type WorkspaceRole, type WorkspaceMember } from "@/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -73,7 +73,7 @@ export default function MembersPage() {
     } = useWorkspace()
 
     const { user } = useAuthStore()
-    const { isUserOnline, onlineUsers } = useWorkspacePresence(workspaceId)
+    const { isUserOnline, onlineUsers } = useWorkspacePresenceContext()
     const currentUserId = user?._id || (user as { id?: string })?.id
 
     const currentUserRole =

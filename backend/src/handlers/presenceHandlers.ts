@@ -59,10 +59,7 @@ export const registerPresenceHandlers = (
             onlineUsers.get(roomName)!.set(socket.userId, userObj);
 
             //notify others in same room
-            socket.to(roomName).emit("user:joined", {
-                userId: socket.userId,
-                user: userObj,
-            });
+            socket.to(roomName).emit("project:user:joined", { userId: socket.userId, user: userObj });
 
             //send current online users to the joining user (as array of full user objects)
             const usersInRoom = Array.from(onlineUsers.get(roomName)?.values() || []);
@@ -90,9 +87,7 @@ export const registerPresenceHandlers = (
             onlineUsers.get(roomName)?.delete(socket.userId);
 
             //notify others in same room
-            socket.to(roomName).emit("user:left", {
-                userId: socket.userId,
-            });
+            socket.to(roomName).emit("project:user:left", { userId: socket.userId });
         } catch (error) {
             console.error(`[presenceHandlers] Error leaving project:`, error);
         }
@@ -132,10 +127,7 @@ export const registerPresenceHandlers = (
             onlineUsers.get(roomName)!.set(socket.userId, userObj);
 
             //notify others in same room
-            socket.to(roomName).emit("user:joined", {
-                userId: socket.userId,
-                user: userObj,
-            });
+            socket.to(roomName).emit("workspace:user:joined", { userId: socket.userId, user: userObj });
 
             //send current online users to the joining user (as array of full user objects)
             const usersInRoom = Array.from(onlineUsers.get(roomName)?.values() || []);
@@ -163,9 +155,7 @@ export const registerPresenceHandlers = (
             onlineUsers.get(roomName)?.delete(socket.userId);
 
             //notify others in same room
-            socket.to(roomName).emit("user:left", {
-                userId: socket.userId,
-            });
+            socket.to(roomName).emit("workspace:user:left", { userId: socket.userId });
         } catch (error) {
             console.error(`[presenceHandlers] Error leaving workspace:`, error);
         }
@@ -177,9 +167,10 @@ export const registerPresenceHandlers = (
         for (const [roomName, users] of onlineUsers.entries()) {
             if (users.has(socket.userId)) {
                 users.delete(socket.userId);
-                socket.to(roomName).emit("user:left", {
-                    userId: socket.userId,
-                });
+                const eventName = roomName.startsWith('workspace:')
+                    ? 'workspace:user:left'
+                    : 'project:user:left';
+                socket.to(roomName).emit(eventName, { userId: socket.userId });
             }
         }
     })

@@ -7,7 +7,8 @@ import { useSocket } from "@/hooks/use-socket";
 import { logger } from "@/lib/logger";
 
 // Global flag to ensure socket listeners are only registered once
-let socketListenersRegistered = false;
+let registeredSocketId: string | null = null;
+let joinedSocketId: string | null = null;
 
 // ===== Types =====
 interface ApiErrorResponse {
@@ -296,11 +297,9 @@ export const useChat = (): UseChatReturn => {
     const markAsRead = useCallback(async (channelId: string): Promise<void> => {
         try {
             setError(null);
-            await api.post(`/api/chat/channels/${channelId}/read`, {});
-            clearUnreadCount(channelId);
 
-            // Also emit via socket for real-time updates
-            const currentUserId = useAuthStore.getState().user?._id;
+            const currentUser = useAuthStore.getState().user;
+            const currentUserId = currentUser?._id || (currentUser as any)?.id;
             const unreadMessageIds = (messages[channelId] || [])
                 .filter(msg => {
                     const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender._id;
@@ -310,6 +309,14 @@ export const useChat = (): UseChatReturn => {
                     });
                 })
                 .map(msg => msg._id);
+
+            if (unreadMessageIds.length === 0) {
+                clearUnreadCount(channelId);
+                return;
+            }
+
+            await api.post(`/api/chat/channels/${channelId}/read`, {});
+            clearUnreadCount(channelId);
 
             if (socket && isConnected && unreadMessageIds.length > 0) {
                 socket.emit('message:read', {
@@ -435,23 +442,21 @@ export const useChat = (): UseChatReturn => {
             });
         });
 
-        // Cleanup: leave all channels when unmounting or disconnecting
-        return () => {
-            logger.log('[useChat] Leaving all channels (cleanup)');
-            channels.forEach(channel => {
-                socket.emit('channel:leave', channel._id);
-            });
-        };
-    }, [socket, isConnected, channels]); // ✅ Fixed: removed joinChannel, leaveChannel dependencies
+        // Do NOT return a cleanup function here that leaves the channels.
+        // Components using this hook (like ChannelList) may quickly unmount/remount
+        // when jumping between pages (e.g. Overview -> Chat -> Members).
+        // By staying completely joined to socket rooms, we ensure real-time messages 
+        // keep updating the global unread badge counts via 'message:new'.
+    }, [socket, isConnected, channels]);
 
     // ===== Socket Event Listeners (Singleton Pattern) =====
     useEffect(() => {
-        if (!socket || !isConnected || socketListenersRegistered) {
+        if (!socket || !isConnected || registeredSocketId === socket.id) {
             return;
         }
 
         logger.log('[useChat] Registering socket event listeners (ONCE)');
-        socketListenersRegistered = true;
+        registeredSocketId = socket.id ?? null;
 
         // Error handler
         const handleSocketError = (error: { event?: string; message: string }) => {
@@ -567,19 +572,10 @@ export const useChat = (): UseChatReturn => {
         socket.on('unread:increment', handleUnreadIncrement);
         socket.on('message:seen', handleMessageSeen);
 
-        // Cleanup
-        return () => {
-            logger.log('[useChat] Cleaning up socket listeners');
-            socket.off('error', handleSocketError);
-            socket.off('message:new', handleNewMessage);
-            socket.off('message:updated', handleUpdatedMessage);
-            socket.off('message:deleted', handleDeletedMessage);
-            socket.off('user:typing', handleUserTyping);
-            socket.off('user:stopTyping', handleUserStopTyping);
-            socket.off('unread:increment', handleUnreadIncrement);
-            socket.off('message:seen', handleMessageSeen);
-            socketListenersRegistered = false;
-        };
+        // Do NOT run cleanup functions here that detach socket listeners.
+        // Because handleNewMessage and others only rely on dynamic Zustand getState() calls,
+        // they successfully avoid stale closures. Keeping them attached universally 
+        // ensures background updates operate identically regardless of which UI page is rendered.
     }, [socket, isConnected]); // ✅ Only depends on socket and connection state
 
     return {

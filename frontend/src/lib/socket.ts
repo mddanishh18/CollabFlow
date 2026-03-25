@@ -6,18 +6,10 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 let socket: Socket | null = null;
 
 export const initializeSocket = (token: string): Socket => {
-    // Return existing connected socket
-    if (socket?.connected) {
-        logger.log("Socket already connected, reusing");
+    // Return existing socket if it exists (even if it's still connecting!)
+    if (socket) {
+        logger.log("Socket already exists (connected or connecting), reusing");
         return socket;
-    }
-
-    // Cleanup only if disconnected
-    if (socket && !socket.connected) {
-        logger.log("Cleaning up disconnected socket");
-        socket.removeAllListeners();
-        socket.disconnect();
-        socket = null;
     }
 
     //create new socket connection

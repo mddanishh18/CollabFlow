@@ -15,7 +15,7 @@ export default function ChatPage() {
     const workspaceId = params.workspaceId as string;
     const hasFetched = useRef(false);
 
-    const { fetchChannels, loading, error, channels, activeChannel } = useChat();
+    const { fetchChannels, loading, error, channels, activeChannel, setActiveChannel } = useChat();
 
     // Fetch channels ONCE when workspaceId is available
     useEffect(() => {
@@ -27,6 +27,12 @@ export default function ChatPage() {
             hasFetched.current = false; // Allow retry on error
         });
     }, [workspaceId, fetchChannels]);
+
+    // Always start on channel list — clear active channel on page load
+    useEffect(() => {
+        setActiveChannel(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Show loading spinner
     if (loading) {

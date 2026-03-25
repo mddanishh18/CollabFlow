@@ -700,6 +700,14 @@ export const markMessagesAsRead = async (req: AuthenticatedRequest, res: Respons
             isDeleted: false
         });
 
+        if (unreadMessages.length === 0) {
+            res.status(200).json({
+                success: true,
+                message: '0 message(s) marked as read'
+            });
+            return;
+        }
+
         await Promise.all(unreadMessages.map(msg => msg.markAsRead(userId)));
 
         res.status(200).json({

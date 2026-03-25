@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useProjects } from "@/hooks/use-projects"
 import { useToast } from "@/hooks/use-toast"
-import { useWorkspacePresence } from "@/hooks/use-workspace-presence"
+import { useWorkspacePresenceContext } from "@/providers/workspace-presence-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -48,7 +48,7 @@ export default function WorkspaceOverviewPage() {
     } = useProjects()
 
     const { user } = useAuthStore()
-    const { onlineUsers, isUserOnline } = useWorkspacePresence(workspaceId)
+    const { onlineUsers, isUserOnline } = useWorkspacePresenceContext()
 
     useEffect(() => {
         if (workspaceId) {

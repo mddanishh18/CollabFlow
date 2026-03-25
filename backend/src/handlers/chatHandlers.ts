@@ -33,6 +33,12 @@ export const registerChatHandlers = (
                 return;
             }
 
+            // Skip DB lookup if already in the room
+            if (socket.rooms.has(`channel:${channelId}`)) {
+                if (callback) callback({ success: true });
+                return;
+            }
+
             if (!isValidObjectId(channelId)) {
                 const error = "Invalid channel ID format";
                 console.error(`[chatHandlers] ${error}`);
@@ -110,38 +116,6 @@ export const registerChatHandlers = (
         }
     });
 
-    // Broadcast new message (after REST API saves it) with validation
-    socket.on("message:send", (data: { channelId: string; message: any }) => {
-        try {
-            // Input validation
-            if (!data || !data.channelId || !data.message) {
-                const error = "Invalid message data";
-                console.error(`[chatHandlers] ${error}`);
-                socket.emit("error", { event: "message:send", message: error });
-                return;
-            }
-
-            if (!isValidObjectId(data.channelId)) {
-                const error = "Invalid channel ID format";
-                console.error(`[chatHandlers] ${error}`);
-                socket.emit("error", { event: "message:send", message: error });
-                return;
-            }
-
-            // Broadcast new message to others
-            socket.to(`channel:${data.channelId}`).emit("message:new", data.message);
-            
-            // Notify channel members about unread message (increment unread count)
-            socket.to(`channel:${data.channelId}`).emit("unread:increment", {
-                channelId: data.channelId,
-                messageId: data.message._id
-            });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Failed to send message";
-            console.error(`[chatHandlers] Error broadcasting message:`, error);
-            socket.emit("error", { event: "message:send", message: errorMessage });
-        }
-    });
 
     // Broadcast edited message with validation
     socket.on("message:edit", (data: { channelId: string; message: any }) => {

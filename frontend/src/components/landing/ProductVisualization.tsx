@@ -150,7 +150,7 @@ export function ProductVisualization() {
                     className="mb-16"
                     initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 16 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: false, margin: '-60px' }}
                     transition={{ duration: 0.5 }}
                 >
                     <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">
