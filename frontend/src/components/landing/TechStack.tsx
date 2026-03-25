@@ -1,6 +1,7 @@
 'use client'
 
 import { useReducedMotion } from 'framer-motion'
+import { ScrollReveal } from './ScrollReveal'
 
 const technologies = [
     'Next.js 16',
@@ -38,11 +39,11 @@ export function TechStack() {
                 `}</style>
             )}
 
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8">
+            <ScrollReveal y={14} duration={0.45} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                     Stack
                 </p>
-            </div>
+            </ScrollReveal>
 
             {shouldReduceMotion ? (
                 <div className="flex flex-wrap gap-x-6 gap-y-3 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">

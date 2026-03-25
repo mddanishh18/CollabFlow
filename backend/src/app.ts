@@ -24,6 +24,15 @@ app.use(cors({
 
 // Rate limiting (only in production)
 if (env.NODE_ENV === 'production') {
+    const chatLimiter = rateLimit({
+        windowMs: env.RATE_LIMIT_WINDOW_MS,
+        max: env.RATE_LIMIT_MAX_REQUESTS * 5,
+        message: 'Too many chat requests, please slow down.',
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+    app.use('/api/chat', chatLimiter);
+
     const limiter = rateLimit({
         windowMs: env.RATE_LIMIT_WINDOW_MS,
         max: env.RATE_LIMIT_MAX_REQUESTS,
@@ -31,7 +40,10 @@ if (env.NODE_ENV === 'production') {
         standardHeaders: true,
         legacyHeaders: false,
     });
-    app.use('/api/', limiter);
+    app.use('/api/', (req, res, next) => {
+        if (req.path.startsWith('/chat')) return next();
+        limiter(req, res, next);
+    });
 }
 
 // Body parser middleware

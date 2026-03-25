@@ -1,10 +1,9 @@
 'use client'
 
-import { motion, useInView, useReducedMotion } from 'framer-motion'
-import { useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { ScrollReveal } from './ScrollReveal'
 
 const TRUST_SIGNALS = [
     'No credit card',
@@ -14,28 +13,15 @@ const TRUST_SIGNALS = [
 ]
 
 export function FinalCTA() {
-    const ref = useRef(null)
-    const isInView = useInView(ref, { once: true, margin: '-100px' })
-    const shouldReduceMotion = useReducedMotion()
-
     return (
-        <section ref={ref} className="relative overflow-hidden py-32 border-t border-border bg-card">
-            {/* Ambient glow — centered at the top of the section */}
+        <section className="relative overflow-hidden py-32 border-t border-border bg-card">
+            {/* Ambient glow */}
             <div className="pointer-events-none absolute inset-x-0 -top-32 flex justify-center">
                 <div className="h-[500px] w-[900px] rounded-full bg-primary/5 blur-[100px]" />
             </div>
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <motion.div
-                    initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 24 }}
-                    animate={
-                        isInView
-                            ? { opacity: 1, y: 0 }
-                            : { opacity: 0, y: shouldReduceMotion ? 0 : 24 }
-                    }
-                    transition={{ duration: 0.55 }}
-                    className="text-center max-w-3xl mx-auto"
-                >
+                <ScrollReveal y={24} duration={0.55} className="text-center max-w-3xl mx-auto">
                     <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-6">
                         CollabFlow Beta
                     </p>
@@ -76,7 +62,7 @@ export function FinalCTA() {
                             </span>
                         ))}
                     </div>
-                </motion.div>
+                </ScrollReveal>
             </div>
         </section>
     )

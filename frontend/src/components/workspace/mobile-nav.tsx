@@ -32,7 +32,7 @@ export function MobileNav() {
                 <SheetHeader className="sr-only">
                     <SheetTitle>Navigation</SheetTitle>
                 </SheetHeader>
-                <Sidebar />
+                <Sidebar onNavigate={() => setOpen(false)} />
             </SheetContent>
         </Sheet>
     )

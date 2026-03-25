@@ -70,17 +70,11 @@ messageSchema.methods.markAsRead = async function (
     this: IMessageDocument,
     userId: string | Types.ObjectId
 ): Promise<void> {
-    const userIdStr = userId.toString();
     const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
-    
-    const hasRead = this.readBy.some((r: IReadReceipt) => {
-        return resolveObjectId(r.user) === userIdStr;
-    });
-
-    if (!hasRead) {
-        this.readBy.push({ user: userObjectId, readAt: new Date() });
-        await this.save();
-    }
+    await (this.constructor as any).updateOne(
+        { _id: this._id, 'readBy.user': { $ne: userObjectId } },
+        { $addToSet: { readBy: { user: userObjectId, readAt: new Date() } } }
+    );
 };
 
 /**

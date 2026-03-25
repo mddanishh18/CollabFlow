@@ -11,13 +11,15 @@ interface UseSocketReturn {
     on: (event: string, callback: (...args: any[]) => void) => (() => void) | undefined;
 }
 
+// Global state to synchronize initialization across multiple hook instances
+let globalInitializing = false;
+let globalToken: string | null = null;
+
 export const useSocket = (): UseSocketReturn => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const token = useAuthStore((state) => state.token);
     const [isConnected, setIsConnected] = useState(false);
     const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
-    const initializingRef = useRef(false);
-    const tokenRef = useRef<string | null>(null);
 
     //initialize socket ONCE
     useEffect(() => {
@@ -25,18 +27,25 @@ export const useSocket = (): UseSocketReturn => {
             disconnectSocket();
             setIsConnected(false);
             setSocketInstance(null);
-            initializingRef.current = false;
-            tokenRef.current = null;
+            globalInitializing = false;
+            globalToken = null;
             return;
         }
 
         // Only initialize if token changed or not yet initialized
-        if (initializingRef.current && tokenRef.current === token) {
+        if (globalInitializing && globalToken === token) {
+            // Socket is already being initialized by another component instance,
+            // just grab it or wait for the connect event
+            const existingSocket = getSocket();
+            if (existingSocket) {
+                setSocketInstance(existingSocket);
+                setIsConnected(existingSocket.connected);
+            }
             return;
         }
 
-        initializingRef.current = true;
-        tokenRef.current = token;
+        globalInitializing = true;
+        globalToken = token;
 
         const socket = initializeSocket(token);
         setSocketInstance(socket);
@@ -52,7 +61,7 @@ export const useSocket = (): UseSocketReturn => {
         const handleDisconnect = () => {
             setIsConnected(false);
             // Reset initializing flag to allow reconnection
-            initializingRef.current = false;
+            globalInitializing = false;
         };
 
         socket.on("connect", handleConnect);
@@ -62,13 +71,14 @@ export const useSocket = (): UseSocketReturn => {
         return () => {
             socket.off("connect", handleConnect);
             socket.off("disconnect", handleDisconnect);
+            // DO NOT reset globalInitializing here! Other components still need the socket.
         };
-    }, [isAuthenticated]);
+    }, [isAuthenticated, token]);
 
 
     //emit event helper
     const emit = useCallback((event: string, data: any) => {
-        const socket = socketInstance || getSocket();
+        const socket = getSocket() || socketInstance;
         if (socket?.connected) {
             socket.emit(event, data);
         } else {
@@ -78,7 +88,7 @@ export const useSocket = (): UseSocketReturn => {
 
     //event listener helper
     const on = useCallback((event: string, callback: (...args: any[]) => void) => {
-        const socket = socketInstance || getSocket();
+        const socket = getSocket() || socketInstance;
         if (socket) {
             socket.on(event, callback);
             return () => socket.off(event, callback);

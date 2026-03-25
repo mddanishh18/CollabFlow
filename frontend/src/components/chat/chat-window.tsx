@@ -33,6 +33,7 @@ export function ChatWindow() {
     const activeChannelRef = useRef(activeChannel);
     const markAsReadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const previousMessageCountRef = useRef(0);
+    const markAsReadRef = useRef(markAsRead);
 
     // Helper: Get display name for channels (especially DMs)
     const getChannelDisplayName = () => {
@@ -109,7 +110,21 @@ export function ChatWindow() {
 
         // Mark as read after 1 second of viewing
         markAsReadTimeoutRef.current = setTimeout(() => {
-            markAsRead(channelId).catch((err) => {
+            const currentUserId = user?._id || (user as any)?.id;
+            const channelMsgs = messages[channelId] || [];
+            const hasUnread = channelMsgs.some(
+                m => {
+                    const senderId = typeof m.sender === 'string' ? m.sender : m.sender._id;
+                    if (senderId === currentUserId) return false;
+                    
+                    return !m.readBy?.some(r => {
+                        const id = typeof r.user === 'string' ? r.user : r.user._id;
+                        return id === currentUserId;
+                    });
+                }
+            );
+            if (!hasUnread) return;
+            markAsReadRef.current(channelId).catch((err) => {
                 console.error('Failed to mark messages as read:', err);
             });
         }, 1000);
@@ -119,15 +134,19 @@ export function ChatWindow() {
                 clearTimeout(markAsReadTimeoutRef.current);
             }
         };
-    }, [channelId, messages, markAsRead]);
+    }, [channelId, channelId ? messages[channelId]?.length : 0]);
+
+    useEffect(() => { markAsReadRef.current = markAsRead; }, [markAsRead]);
 
     // Re-join channel when socket connects (handles timing issues)
     useEffect(() => {
         if (isConnected && channelId) {
-            joinChannel(channelId);
+            const timer = setTimeout(() => joinChannel(channelId), 100);
+            return () => clearTimeout(timer);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConnected]);
+
 
     // Handle no active channel
     if (!activeChannel) {

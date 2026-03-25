@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useChat } from "@/hooks/use-chat";
-import { useWorkspacePresence } from "@/hooks/use-workspace-presence";
+import { useWorkspacePresenceContext } from "@/providers/workspace-presence-provider";
 import { Plus, Search, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,17 +16,10 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ workspaceId }: ChannelListProps) {
-    const { channels, activeChannel, setActiveChannel, fetchWorkspaceUnreadCounts } = useChat();
-    const { isUserOnline } = useWorkspacePresence(workspaceId);
+    const { channels, activeChannel, setActiveChannel } = useChat();
+    const { isUserOnline } = useWorkspacePresenceContext();
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-    // Fetch unread counts when component mounts or workspace changes
-    useEffect(() => {
-        if (workspaceId) {
-            fetchWorkspaceUnreadCounts(workspaceId);
-        }
-    }, [workspaceId, fetchWorkspaceUnreadCounts]);
 
     // Filter channels by search query
     const filteredChannels = channels.filter((channel) =>

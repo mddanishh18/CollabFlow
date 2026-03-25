@@ -8,6 +8,7 @@ import { PendingInvitationsDialog } from "./pending-invitations-dialog"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { useAuthStore } from "@/store/auth-store"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { useChatStore } from "@/store/chat-store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -46,7 +47,7 @@ interface Route {
     show: boolean
 }
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname()
     const params = useParams()
     const router = useRouter()
@@ -57,6 +58,10 @@ export function Sidebar() {
     const [aiPreviewOpen, setAiPreviewOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
     const shouldAnimate = !useReducedMotion()
+
+    // Count channels with unread messages for sidebar badge
+    const unreadCounts = useChatStore((state) => state.unreadCounts)
+    const unreadChannelCount = Object.values(unreadCounts).filter((c) => c > 0).length
 
     // Get user's role - check userRole property first (from API), then members array
     const userRole =
@@ -70,10 +75,14 @@ export function Sidebar() {
 
     // Navigation handler using useTransition for real App Router feedback
     const handleNavigation = (href: string, e: React.MouseEvent) => {
-        if (href === pathname) return
+        if (href === pathname) {
+            onNavigate?.()
+            return
+        }
         e.preventDefault()
         startTransition(() => {
             router.push(href)
+            onNavigate?.()
         })
     }
 
@@ -171,6 +180,11 @@ export function Sidebar() {
                                     )}>
                                         <route.icon className={cn("mr-2.5 h-4 w-4 shrink-0 transition-colors duration-150", route.active && "text-primary")} />
                                         {route.label}
+                                        {route.label === "Chat" && unreadChannelCount > 0 && !route.active && (
+                                            <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                                                {unreadChannelCount > 9 ? "9+" : unreadChannelCount}
+                                            </span>
+                                        )}
                                     </div>
                                 </Link>
                             </div>

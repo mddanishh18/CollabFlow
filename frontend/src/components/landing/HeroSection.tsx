@@ -41,7 +41,8 @@ export function HeroSection() {
                 {/* Text block — left-aligned on desktop, centered on mobile */}
                 <motion.div
                     initial="hidden"
-                    animate="visible"
+                    whileInView="visible"
+                    viewport={{ once: false, margin: '-60px' }}
                     variants={stagger}
                     className="flex flex-col items-center md:items-start"
                 >
@@ -99,8 +100,9 @@ export function HeroSection() {
                 {/* Bento Grid — full container width, delayed reveal */}
                 <motion.div
                     initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.65, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, margin: '-60px' }}
+                    transition={{ duration: 0.65, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     className="mt-20"
                 >
                     <BentoGrid />

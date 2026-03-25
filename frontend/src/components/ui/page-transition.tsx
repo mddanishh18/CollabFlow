@@ -17,9 +17,7 @@ export function PageTransition({ children }: PageTransitionProps) {
     const [isTransitioning, setIsTransitioning] = useState(false)
 
     useEffect(() => {
-        // Trigger transition when path changes
         if (supportsViewTransitions) {
-            // Use native View Transitions API for supporting browsers
             const transition = (document as any).startViewTransition(() => {
                 setDisplayChildren(children)
             })
@@ -28,7 +26,12 @@ export function PageTransition({ children }: PageTransitionProps) {
                 setIsTransitioning(false)
             })
         } else {
-            // Fallback to Framer Motion
+            setDisplayChildren(children)
+        }
+    }, [pathname])
+
+    useEffect(() => {
+        if (!supportsViewTransitions) {
             setDisplayChildren(children)
         }
     }, [children])

@@ -1,9 +1,9 @@
 'use client';
 
-import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { type LucideIcon, FolderKanban, MessageSquare, CheckSquare, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollReveal } from './ScrollReveal';
 
 interface Feature {
     icon: LucideIcon;
@@ -77,81 +77,54 @@ const features: Feature[] = [
     },
 ];
 
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: { staggerChildren: 0.1 },
-    },
-};
-
-const itemVariants = {
-    hidden: { opacity: 0, y: 16 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
-    },
-};
-
 export function FeaturesGrid() {
-    const ref = useRef<HTMLElement>(null);
-    const isInView = useInView(ref, { once: true, margin: '-80px' });
+    const shouldReduceMotion = useReducedMotion();
 
     return (
-        <section ref={ref} className="py-24 sm:py-32 bg-linear-to-b from-background to-muted/30">
+        <section className="py-24 sm:py-32 bg-linear-to-b from-background to-muted/30">
             <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <motion.div
-                    initial="hidden"
-                    animate={isInView ? 'visible' : 'hidden'}
-                    variants={containerVariants}
-                >
-                    {/* Section header — left-aligned, split layout */}
-                    <motion.div
-                        variants={itemVariants}
-                        className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-12"
-                    >
-                        <div>
-                            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
-                                Everything your team needs.
-                            </h2>
-                            <p className="text-lg text-muted-foreground">
-                                Built-in tools to collaborate, manage tasks, and ship — all in real-time.
-                            </p>
-                        </div>
-                        <span className="text-sm text-muted-foreground shrink-0 sm:text-right">
-                            One platform.
-                            <br className="hidden sm:block" />
-                            No integrations needed.
-                        </span>
-                    </motion.div>
-
-                    {/* Z-pattern grid: 2+1 / 1+2 */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {features.map((feature) => {
-                            const Icon = feature.icon;
-                            return (
-                                <motion.div
-                                    key={feature.title}
-                                    variants={itemVariants}
-                                    className={cn(
-                                        'rounded-xl border border-border bg-card p-6 transition-colors duration-200 hover:bg-accent/30',
-                                        feature.wide && 'md:col-span-2'
-                                    )}
-                                >
-                                    <Icon className="w-6 h-6 text-primary mb-4" />
-                                    <h3 className="text-base font-semibold text-foreground mb-2">
-                                        {feature.title}
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">
-                                        {feature.description}
-                                    </p>
-                                    {feature.detail}
-                                </motion.div>
-                            );
-                        })}
+                {/* Section header */}
+                <ScrollReveal className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-12">
+                    <div>
+                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+                            Everything your team needs.
+                        </h2>
+                        <p className="text-lg text-muted-foreground">
+                            Built-in tools to collaborate, manage tasks, and ship — all in real-time.
+                        </p>
                     </div>
-                </motion.div>
+                    <span className="text-sm text-muted-foreground shrink-0 sm:text-right">
+                        One platform.
+                        <br className="hidden sm:block" />
+                        No integrations needed.
+                    </span>
+                </ScrollReveal>
+
+                {/* Z-pattern grid: 2+1 / 1+2 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {features.map((feature, i) => {
+                        const Icon = feature.icon;
+                        return (
+                            <ScrollReveal
+                                key={feature.title}
+                                delay={shouldReduceMotion ? 0 : i * 0.08}
+                                className={cn(
+                                    'rounded-xl border border-border bg-card p-6 transition-colors duration-200 hover:bg-accent/30',
+                                    feature.wide && 'md:col-span-2'
+                                )}
+                            >
+                                <Icon className="w-6 h-6 text-primary mb-4" />
+                                <h3 className="text-base font-semibold text-foreground mb-2">
+                                    {feature.title}
+                                </h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    {feature.description}
+                                </p>
+                                {feature.detail}
+                            </ScrollReveal>
+                        );
+                    })}
+                </div>
             </div>
         </section>
     );
